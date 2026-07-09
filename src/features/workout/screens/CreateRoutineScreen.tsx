@@ -160,6 +160,15 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
     [updateEntry],
   );
 
+  const handleRemoveSet = useCallback(
+    (exerciseId: string, setId: string) =>
+      updateEntry(exerciseId, entry => ({
+        ...entry,
+        sets: entry.sets.filter(set => set.id !== setId),
+      })),
+    [updateEntry],
+  );
+
   const removeExercise = useCallback((exerciseId: string) => {
     setEntries(current => current.filter(entry => entry.exercise.id !== exerciseId));
   }, []);
@@ -304,6 +313,7 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
                     onChangeSet={(setId, field, value) =>
                       handleChangeSet(entry.exercise.id, setId, field, value)
                     }
+                    onRemoveSet={setId => handleRemoveSet(entry.exercise.id, setId)}
                     onOpenMenu={() => setMenuFor(entry.exercise.id)}
                   />
                 ))}

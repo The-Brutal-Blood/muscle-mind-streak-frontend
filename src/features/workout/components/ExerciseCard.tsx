@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DotsVerticalIcon, PlusIcon, TimerIcon } from '@/components/icons/ActionIcons';
 import { Text } from '@/components/ui';
@@ -14,6 +14,7 @@ export interface ExerciseCardProps {
   onOpenRestTimer: () => void;
   onAddSet: () => void;
   onChangeSet: (setId: string, field: 'kg' | 'reps', value: string) => void;
+  onRemoveSet: (setId: string) => void;
   onOpenMenu: () => void;
 }
 
@@ -30,9 +31,17 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
   onOpenRestTimer,
   onAddSet,
   onChangeSet,
+  onRemoveSet,
   onOpenMenu,
 }: ExerciseCardProps) {
   const { exercise, notes, restSeconds, sets } = entry;
+
+  const confirmRemoveSet = (setId: string, index: number) => {
+    Alert.alert('Remove set', `Remove set ${index + 1}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => onRemoveSet(setId) },
+    ]);
+  };
 
   return (
     <View style={styles.card}>
@@ -96,7 +105,15 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
       </View>
 
       {sets.map((set, index) => (
-        <View key={set.id} style={styles.setRow}>
+        <Pressable
+          key={set.id}
+          onLongPress={() => confirmRemoveSet(set.id, index)}
+          delayLongPress={350}
+          accessibilityRole="button"
+          accessibilityLabel={`Set ${index + 1}`}
+          accessibilityHint="Long press to remove this set"
+          style={({ pressed }) => [styles.setRow, pressed && styles.setRowPressed]}
+        >
           <Text variant="subtitle" style={styles.colSet}>
             {index + 1}
           </Text>
@@ -126,7 +143,7 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
               accessibilityLabel={`Set ${index + 1} repetitions`}
             />
           </View>
-        </View>
+        </Pressable>
       ))}
 
       <Pressable
@@ -216,6 +233,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  setRowPressed: {
+    backgroundColor: colors.surface,
   },
   cellInput: {
     ...typography.subtitle,
