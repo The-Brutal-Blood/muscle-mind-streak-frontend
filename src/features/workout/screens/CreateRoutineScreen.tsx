@@ -1,33 +1,39 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Animated,
-  Easing,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Easing, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { CloseIcon, PlusIcon } from '@/components/icons/ActionIcons';
+import { PlusIcon } from '@/components/icons/ActionIcons';
 import { DumbbellIcon } from '@/components/icons/TabIcons';
 import { Button, Screen, Text } from '@/components/ui';
 import type { Exercise } from '@/features/exercises/types/exercise.types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
+
+import { ExerciseCard } from '../components/ExerciseCard';
+import { ExerciseMenuSheet } from '../components/ExerciseMenuSheet';
+import { ReorderExercisesModal } from '../components/ReorderExercisesModal';
+import { RestTimerSheet } from '../components/RestTimerSheet';
+import type { RoutineExerciseDraft } from '../types/workout.types';
 
 export interface RoutineDraft {
   name: string;
-  exercises: Exercise[];
+  exercises: RoutineExerciseDraft[];
+}
+
+/** Replacement handed back by the library when swapping one exercise for another. */
+export interface ExerciseReplacement {
+  targetId: string;
+  exercise: Exercise;
 }
 
 export interface CreateRoutineScreenProps {
   /** Exercises returned by the Add Exercise flow; merged into the draft. */
   addedExercises?: Exercise[];
+  /** A swap returned by the library's replace flow; applied to the target slot. */
+  replacement?: ExerciseReplacement;
   /** Opens the exercise picker. Navigation is owned by the caller. */
   onAddExercise?: () => void;
+  /** Opens the library to replace the given exercise. Navigation is owned by the caller. */
+  onReplaceExercise?: (targetId: string) => void;
   /** Dismisses the screen without saving. Navigation is owned by the caller. */
   onCancel?: () => void;
   /** Fired with the draft when Save is pressed. Persistence is wired later. */
@@ -35,16 +41,36 @@ export interface CreateRoutineScreenProps {
 }
 
 const EMPTY_STATE_ICON_SIZE = 48;
-const EXERCISE_THUMBNAIL_SIZE = 44;
+/** Rough duration of the options sheet's slide-out, before opening the next screen. */
+const MENU_DISMISS_MS = 300;
+
+/** Builds a fresh draft entry for a newly added exercise: one empty set, no rest. */
+function createEntry(exercise: Exercise, setId: string): RoutineExerciseDraft {
+  return {
+    exercise,
+    notes: '',
+    restSeconds: null,
+    sets: [{ id: setId, kg: '', reps: '' }],
+  };
+}
 
 export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
   addedExercises,
+  replacement,
   onAddExercise,
+  onReplaceExercise,
   onCancel,
   onSave,
 }: CreateRoutineScreenProps) {
   const [name, setName] = useState('');
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [entries, setEntries] = useState<RoutineExerciseDraft[]>([]);
+  const [restSheetFor, setRestSheetFor] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [reorderVisible, setReorderVisible] = useState(false);
+
+  // Monotonic set-id source so React keys stay stable across add/remove.
+  const setSeq = useRef(0);
+  const nextSetId = useCallback(() => `set-${setSeq.current++}`, []);
 
   // Each Add Exercise round trip delivers a fresh batch; merge without
   // duplicating anything already in the draft.
@@ -52,19 +78,110 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
     if (!addedExercises || addedExercises.length === 0) {
       return;
     }
-    setExercises(current => {
-      const known = new Set(current.map(exercise => exercise.id));
+    setEntries(current => {
+      const known = new Set(current.map(entry => entry.exercise.id));
       const fresh = addedExercises.filter(exercise => !known.has(exercise.id));
-      return fresh.length > 0 ? [...current, ...fresh] : current;
+      if (fresh.length === 0) {
+        return current;
+      }
+      return [...current, ...fresh.map(exercise => createEntry(exercise, nextSetId()))];
     });
-  }, [addedExercises]);
+  }, [addedExercises, nextSetId]);
 
-  const removeExercise = (id: string) => {
-    setExercises(current => current.filter(exercise => exercise.id !== id));
-  };
+  // A replace round trip swaps the exercise in its slot, keeping sets/notes/rest.
+  // Idempotent: re-running with the same replacement is a no-op.
+  useEffect(() => {
+    if (!replacement) {
+      return;
+    }
+    setEntries(current => {
+      const targetIndex = current.findIndex(
+        entry => entry.exercise.id === replacement.targetId,
+      );
+      if (targetIndex === -1) {
+        return current;
+      }
+      const target = current[targetIndex];
+      if (target.exercise.id === replacement.exercise.id) {
+        return current;
+      }
+      // Guard against colliding with an exercise already in the draft.
+      if (current.some(entry => entry.exercise.id === replacement.exercise.id)) {
+        return current;
+      }
+      const next = [...current];
+      next[targetIndex] = { ...target, exercise: replacement.exercise };
+      return next;
+    });
+  }, [replacement]);
+
+  const updateEntry = useCallback(
+    (exerciseId: string, updater: (entry: RoutineExerciseDraft) => RoutineExerciseDraft) => {
+      setEntries(current =>
+        current.map(entry => (entry.exercise.id === exerciseId ? updater(entry) : entry)),
+      );
+    },
+    [],
+  );
+
+  const handleChangeNotes = useCallback(
+    (exerciseId: string, notes: string) => updateEntry(exerciseId, entry => ({ ...entry, notes })),
+    [updateEntry],
+  );
+
+  const handleSetRest = useCallback(
+    (exerciseId: string, restSeconds: number | null) =>
+      updateEntry(exerciseId, entry => ({ ...entry, restSeconds })),
+    [updateEntry],
+  );
+
+  // Add Set duplicates the last row's values (weight/reps) as a starting point.
+  const handleAddSet = useCallback(
+    (exerciseId: string) =>
+      updateEntry(exerciseId, entry => {
+        const previous = entry.sets[entry.sets.length - 1];
+        return {
+          ...entry,
+          sets: [
+            ...entry.sets,
+            { id: nextSetId(), kg: previous?.kg ?? '', reps: previous?.reps ?? '' },
+          ],
+        };
+      }),
+    [updateEntry, nextSetId],
+  );
+
+  const handleChangeSet = useCallback(
+    (exerciseId: string, setId: string, field: 'kg' | 'reps', value: string) =>
+      updateEntry(exerciseId, entry => ({
+        ...entry,
+        sets: entry.sets.map(set => (set.id === setId ? { ...set, [field]: value } : set)),
+      })),
+    [updateEntry],
+  );
+
+  const removeExercise = useCallback((exerciseId: string) => {
+    setEntries(current => current.filter(entry => entry.exercise.id !== exerciseId));
+  }, []);
+
+  // Reconcile the reorder editor's result: apply the new order, drop removals.
+  const applyReorder = useCallback((orderedIds: string[]) => {
+    setEntries(current => {
+      const byId = new Map(current.map(entry => [entry.exercise.id, entry]));
+      return orderedIds
+        .map(id => byId.get(id))
+        .filter((entry): entry is RoutineExerciseDraft => entry != null);
+    });
+  }, []);
+
+  const handleAddToSuperset = useCallback(() => {
+    Alert.alert('Add To Superset', 'Superset support is coming soon.');
+  }, []);
+
+  const menuEntry = entries.find(entry => entry.exercise.id === menuFor) ?? null;
 
   const canSave = name.trim().length > 0;
-  const isDirty = name.trim().length > 0 || exercises.length > 0;
+  const isDirty = name.trim().length > 0 || entries.length > 0;
 
   const handleCancel = () => {
     if (!isDirty) {
@@ -81,8 +198,10 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
     if (!canSave) {
       return;
     }
-    onSave?.({ name: name.trim(), exercises });
+    onSave?.({ name: name.trim(), exercises: entries });
   };
+
+  const restSheetEntry = entries.find(entry => entry.exercise.id === restSheetFor) ?? null;
 
   // Content eases in under the modal slide.
   const reduceMotion = useReducedMotion();
@@ -151,15 +270,10 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
             accessibilityHint="Names your new routine"
           />
 
-          {exercises.length === 0 ? (
+          {entries.length === 0 ? (
             <View style={styles.emptyState}>
               <DumbbellIcon color={colors.textSecondary} size={EMPTY_STATE_ICON_SIZE} />
-              <Text
-                variant="body"
-                color="textSecondary"
-                align="center"
-                style={styles.emptyText}
-              >
+              <Text variant="body" color="textSecondary" align="center" style={styles.emptyText}>
                 Get started by adding an exercise to your routine.
               </Text>
               <Button
@@ -177,39 +291,21 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
           ) : (
             <View style={styles.exerciseSection}>
               <Text variant="label" color="textSecondary" style={styles.exerciseCount}>
-                {`Exercises (${exercises.length})`}
+                {`Exercises (${entries.length})`}
               </Text>
               <View style={styles.exerciseList}>
-                {exercises.map(exercise => (
-                  <View key={exercise.id} style={styles.exerciseRow}>
-                    <Image
-                      source={{ uri: exercise.imageUrl }}
-                      style={styles.exerciseThumbnail}
-                      resizeMode="cover"
-                      accessible={false}
-                    />
-                    <View style={styles.exerciseInfo}>
-                      <Text variant="subtitle" numberOfLines={1} style={styles.exerciseName}>
-                        {exercise.name}
-                      </Text>
-                      <Text
-                        variant="bodySmall"
-                        color="textSecondary"
-                        numberOfLines={1}
-                        style={styles.exerciseName}
-                      >
-                        {exercise.primaryMuscle}
-                      </Text>
-                    </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove ${exercise.name}`}
-                      onPress={() => removeExercise(exercise.id)}
-                      hitSlop={spacing.md}
-                    >
-                      <CloseIcon color={colors.textSecondary} size={18} />
-                    </Pressable>
-                  </View>
+                {entries.map(entry => (
+                  <ExerciseCard
+                    key={entry.exercise.id}
+                    entry={entry}
+                    onChangeNotes={notes => handleChangeNotes(entry.exercise.id, notes)}
+                    onOpenRestTimer={() => setRestSheetFor(entry.exercise.id)}
+                    onAddSet={() => handleAddSet(entry.exercise.id)}
+                    onChangeSet={(setId, field, value) =>
+                      handleChangeSet(entry.exercise.id, setId, field, value)
+                    }
+                    onOpenMenu={() => setMenuFor(entry.exercise.id)}
+                  />
                 ))}
               </View>
               <Button
@@ -227,6 +323,50 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
           )}
         </ScrollView>
       </Animated.View>
+
+      <RestTimerSheet
+        visible={restSheetEntry != null}
+        exerciseName={restSheetEntry?.exercise.name}
+        value={restSheetEntry?.restSeconds ?? null}
+        onDone={seconds => {
+          if (restSheetEntry) {
+            handleSetRest(restSheetEntry.exercise.id, seconds);
+          }
+        }}
+        onClose={() => setRestSheetFor(null)}
+      />
+
+      <ExerciseMenuSheet
+        visible={menuEntry != null}
+        exerciseName={menuEntry?.exercise.name}
+        // Reorder/replace open another presentation; wait for this sheet to
+        // finish dismissing first so iOS doesn't drop the second modal.
+        onReorder={() => setTimeout(() => setReorderVisible(true), MENU_DISMISS_MS)}
+        onReplace={() => {
+          const targetId = menuEntry?.exercise.id;
+          if (targetId) {
+            setTimeout(() => onReplaceExercise?.(targetId), MENU_DISMISS_MS);
+          }
+        }}
+        onAddToSuperset={handleAddToSuperset}
+        onRemove={() => {
+          if (menuEntry) {
+            removeExercise(menuEntry.exercise.id);
+          }
+        }}
+        onClose={() => setMenuFor(null)}
+      />
+
+      <ReorderExercisesModal
+        visible={reorderVisible}
+        items={entries.map(entry => ({
+          id: entry.exercise.id,
+          name: entry.exercise.name,
+          imageUrl: entry.exercise.imageUrl,
+        }))}
+        onDone={applyReorder}
+        onClose={() => setReorderVisible(false)}
+      />
     </Screen>
   );
 });
@@ -278,29 +418,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   exerciseList: {
-    gap: spacing.sm,
-  },
-  exerciseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  exerciseThumbnail: {
-    width: EXERCISE_THUMBNAIL_SIZE,
-    height: EXERCISE_THUMBNAIL_SIZE,
-    borderRadius: EXERCISE_THUMBNAIL_SIZE / 2,
-    backgroundColor: colors.surfaceElevated,
-  },
-  exerciseInfo: {
-    flex: 1,
-  },
-  exerciseName: {
-    textTransform: 'capitalize',
+    gap: spacing.lg,
   },
   addMoreButton: {
     marginTop: spacing.xl,

@@ -8,6 +8,7 @@ import type { Exercise, ExerciseFilters, Page } from '../types/exercise.types';
 export const exerciseKeys = {
   all: ['exercises'] as const,
   list: (filters: ExerciseFilters) => ['exercises', 'list', filters] as const,
+  detail: (id: string) => ['exercises', 'detail', id] as const,
 };
 
 /**

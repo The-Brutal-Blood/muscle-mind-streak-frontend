@@ -9,8 +9,8 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { ExerciseListItem } from '../components/ExerciseListItem';
 import { FilterSheet } from '../components/FilterSheet';
 import {
+  useCategoryOptions,
   useEquipmentOptions,
-  usePrimaryMuscleOptions,
 } from '../hooks/useExerciseFilterOptions';
 import { useExercises } from '../hooks/useExercises';
 import type { Exercise } from '../types/exercise.types';
@@ -20,6 +20,13 @@ export interface AddExerciseScreenProps {
   onCancel?: () => void;
   /** Returns the chosen exercises to the routine being edited. */
   onDone?: (exercises: Exercise[]) => void;
+  /** Opens an exercise's detail screen. Navigation is owned by the caller. */
+  onOpenExercise?: (exercise: Exercise) => void;
+  /**
+   * When set, the picker runs in single-select "replace" mode: tapping a row
+   * immediately returns that exercise instead of building a multi-selection.
+   */
+  onReplace?: (exercise: Exercise) => void;
 }
 
 interface FilterButtonProps {
@@ -64,11 +71,14 @@ const FilterButton = React.memo(function FilterButtonBase({
 export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
   onCancel,
   onDone,
+  onOpenExercise,
+  onReplace,
 }: AddExerciseScreenProps) {
+  const replaceMode = onReplace != null;
   const [searchTerm, setSearchTerm] = useState('');
   const [equipment, setEquipment] = useState<string | null>(null);
-  const [primaryMuscle, setPrimaryMuscle] = useState<string | null>(null);
-  const [openSheet, setOpenSheet] = useState<'equipment' | 'muscle' | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
+  const [openSheet, setOpenSheet] = useState<'equipment' | 'category' | null>(null);
   const [selected, setSelected] = useState<Map<string, Exercise>>(new Map());
 
   const debouncedSearch = useDebouncedValue(searchTerm.trim());
@@ -77,9 +87,9 @@ export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
     () => ({
       search: debouncedSearch || undefined,
       equipment: equipment ?? undefined,
-      primaryMuscle: primaryMuscle ?? undefined,
+      category: category ?? undefined,
     }),
-    [debouncedSearch, equipment, primaryMuscle],
+    [debouncedSearch, equipment, category],
   );
 
   const {
@@ -94,7 +104,7 @@ export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
   } = useExercises(filters);
 
   const equipmentOptions = useEquipmentOptions();
-  const muscleOptions = usePrimaryMuscleOptions();
+  const categoryOptions = useCategoryOptions();
 
   const exercises = useMemo(() => data?.pages.flatMap(page => page.content) ?? [], [data]);
 
@@ -135,19 +145,23 @@ export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
           accessibilityHint="Closes without adding exercises"
         />
         <Text variant="title" accessibilityRole="header">
-          Add Exercise
+          {replaceMode ? 'Replace Exercise' : 'Add Exercise'}
         </Text>
-        <Button
-          label={selected.size > 0 ? `Add (${selected.size})` : 'Add'}
-          variant="primary"
-          size="sm"
-          disabled={selected.size === 0}
-          onPress={handleDone}
-          accessibilityLabel={
-            selected.size > 0 ? `Add ${selected.size} exercises` : 'Add exercises'
-          }
-          accessibilityHint="Adds the selected exercises to your routine"
-        />
+        {replaceMode ? (
+          <View style={styles.headerSpacer} />
+        ) : (
+          <Button
+            label={selected.size > 0 ? `Add (${selected.size})` : 'Add'}
+            variant="primary"
+            size="sm"
+            disabled={selected.size === 0}
+            onPress={handleDone}
+            accessibilityLabel={
+              selected.size > 0 ? `Add ${selected.size} exercises` : 'Add exercises'
+            }
+            accessibilityHint="Adds the selected exercises to your routine"
+          />
+        )}
       </View>
 
       <View style={styles.controls}>
@@ -175,10 +189,10 @@ export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
             accessibilityLabel={`Equipment filter: ${equipment ?? 'All Equipment'}`}
           />
           <FilterButton
-            label={primaryMuscle ?? 'All Muscles'}
-            active={primaryMuscle != null}
-            onPress={() => setOpenSheet('muscle')}
-            accessibilityLabel={`Muscle filter: ${primaryMuscle ?? 'All Muscles'}`}
+            label={category ?? 'All Muscles'}
+            active={category != null}
+            onPress={() => setOpenSheet('category')}
+            accessibilityLabel={`Muscle filter: ${category ?? 'All Muscles'}`}
           />
         </View>
       </View>
@@ -208,8 +222,9 @@ export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
           renderItem={({ item }) => (
             <ExerciseListItem
               exercise={item}
-              selected={selected.has(item.id)}
-              onToggle={toggleExercise}
+              selected={onReplace ? false : selected.has(item.id)}
+              onToggle={onReplace ?? toggleExercise}
+              onInfo={onOpenExercise}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -243,13 +258,13 @@ export const AddExerciseScreen = React.memo(function AddExerciseScreenBase({
         onClose={() => setOpenSheet(null)}
       />
       <FilterSheet
-        visible={openSheet === 'muscle'}
+        visible={openSheet === 'category'}
         title="Muscle Group"
         allLabel="All Muscles"
-        options={muscleOptions.data ?? []}
-        selected={primaryMuscle}
-        loading={muscleOptions.isPending}
-        onSelect={setPrimaryMuscle}
+        options={categoryOptions.data ?? []}
+        selected={category}
+        loading={categoryOptions.isPending}
+        onSelect={setCategory}
         onClose={() => setOpenSheet(null)}
       />
     </Screen>
@@ -266,6 +281,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundSecondary,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.divider,
+  },
+  headerSpacer: {
+    width: 64,
   },
   controls: {
     paddingHorizontal: spacing.lg,

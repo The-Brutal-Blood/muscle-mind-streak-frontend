@@ -10,6 +10,7 @@ import {
 import { DumbbellIcon, HomeIcon, UserIcon, type TabIconProps } from '@/components/icons/TabIcons';
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
 import { AddExerciseScreen } from '@/features/exercises/screens/AddExerciseScreen';
+import { ExerciseDetailScreen } from '@/features/exercises/screens/ExerciseDetailScreen';
 import type { Exercise } from '@/features/exercises/types/exercise.types';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { CreateRoutineScreen } from '@/features/workout/screens/CreateRoutineScreen';
@@ -29,9 +30,16 @@ export type AppTabsParamList = {
 
 export type AppStackParamList = {
   Tabs: NavigatorScreenParams<AppTabsParamList> | undefined;
-  /** `addedExercises` is the Add Exercise flow's return channel. */
-  CreateRoutine: { addedExercises?: Exercise[] } | undefined;
-  AddExercise: undefined;
+  /**
+   * `addedExercises` returns picks from the Add flow; `replacement` returns a
+   * single swap from the Replace flow.
+   */
+  CreateRoutine:
+    | { addedExercises?: Exercise[]; replacement?: { targetId: string; exercise: Exercise } }
+    | undefined;
+  /** `replaceTargetId` runs the picker in single-select replace mode. */
+  AddExercise: { replaceTargetId?: string } | undefined;
+  ExerciseDetail: { exerciseId: string };
 };
 
 const Tabs = createBottomTabNavigator<AppTabsParamList>();
@@ -86,13 +94,16 @@ function AppTabs() {
 
 type CreateRoutineRouteProps = NativeStackScreenProps<AppStackParamList, 'CreateRoutine'>;
 type AddExerciseRouteProps = NativeStackScreenProps<AppStackParamList, 'AddExercise'>;
+type ExerciseDetailRouteProps = NativeStackScreenProps<AppStackParamList, 'ExerciseDetail'>;
 
 /** Save currently just dismisses; the create-routine mutation lands here. */
 function CreateRoutineRoute({ navigation, route }: CreateRoutineRouteProps) {
   return (
     <CreateRoutineScreen
       addedExercises={route.params?.addedExercises}
+      replacement={route.params?.replacement}
       onAddExercise={() => navigation.navigate('AddExercise')}
+      onReplaceExercise={targetId => navigation.navigate('AddExercise', { replaceTargetId: targetId })}
       onCancel={() => navigation.goBack()}
       onSave={() => navigation.goBack()}
     />
@@ -100,11 +111,33 @@ function CreateRoutineRoute({ navigation, route }: CreateRoutineRouteProps) {
 }
 
 /** Pops back to the routine draft, delivering the selection via params. */
-function AddExerciseRoute({ navigation }: AddExerciseRouteProps) {
+function AddExerciseRoute({ navigation, route }: AddExerciseRouteProps) {
+  const replaceTargetId = route.params?.replaceTargetId;
   return (
     <AddExerciseScreen
       onCancel={() => navigation.goBack()}
       onDone={exercises => navigation.popTo('CreateRoutine', { addedExercises: exercises })}
+      onReplace={
+        replaceTargetId
+          ? exercise =>
+              navigation.popTo('CreateRoutine', {
+                replacement: { targetId: replaceTargetId, exercise },
+              })
+          : undefined
+      }
+      onOpenExercise={exercise =>
+        navigation.navigate('ExerciseDetail', { exerciseId: exercise.id })
+      }
+    />
+  );
+}
+
+/** Read-only exercise info drilled into from the picker. */
+function ExerciseDetailRoute({ navigation, route }: ExerciseDetailRouteProps) {
+  return (
+    <ExerciseDetailScreen
+      exerciseId={route.params.exerciseId}
+      onClose={() => navigation.goBack()}
     />
   );
 }
@@ -127,6 +160,11 @@ export function AppNavigator() {
         name="AddExercise"
         component={AddExerciseRoute}
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="ExerciseDetail"
+        component={ExerciseDetailRoute}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

@@ -30,10 +30,19 @@ export async function getExercises(
         size,
         search: filters.search || undefined,
         equipment: filters.equipment || undefined,
-        primaryMuscle: filters.primaryMuscle || undefined,
+        category: filters.category || undefined,
       },
     });
     return { ...data, content: data.content.map(withResolvedAssets) };
+  } catch (error) {
+    throw toApiError(error);
+  }
+}
+
+export async function getExerciseById(id: string): Promise<Exercise> {
+  try {
+    const { data } = await apiClient.get<Exercise>(`${EXERCISES_ENDPOINT}/${id}`);
+    return withResolvedAssets(data);
   } catch (error) {
     throw toApiError(error);
   }
@@ -48,9 +57,9 @@ export async function getEquipmentOptions(): Promise<string[]> {
   }
 }
 
-export async function getPrimaryMuscleOptions(): Promise<string[]> {
+export async function getCategoryOptions(): Promise<string[]> {
   try {
-    const { data } = await apiClient.get<string[]>(`${EXERCISES_ENDPOINT}/primary-muscles`);
+    const { data } = await apiClient.get<string[]>(`${EXERCISES_ENDPOINT}/category`);
     return data;
   } catch (error) {
     throw toApiError(error);

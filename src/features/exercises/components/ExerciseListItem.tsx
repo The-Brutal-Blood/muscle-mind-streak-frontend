@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { CheckIcon } from '@/components/icons/ActionIcons';
+import { CheckIcon, TrendingUpCircleIcon } from '@/components/icons/ActionIcons';
 import { Text } from '@/components/ui';
 import { colors, radius, spacing } from '@/theme';
 
@@ -11,22 +11,26 @@ export interface ExerciseListItemProps {
   exercise: Exercise;
   selected: boolean;
   onToggle: (exercise: Exercise) => void;
+  /** Opens the exercise's detail screen. Omit to hide the info affordance. */
+  onInfo?: (exercise: Exercise) => void;
 }
 
 const THUMBNAIL_SIZE = 56;
 const CHECK_BADGE_SIZE = 28;
+const INFO_BUTTON_SIZE = 32;
 
 /** One library row: thumbnail, name, primary muscle, selection state. */
 export const ExerciseListItem = React.memo(function ExerciseListItemBase({
   exercise,
   selected,
   onToggle,
+  onInfo,
 }: ExerciseListItemProps) {
   return (
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
-      accessibilityLabel={`${exercise.name}, ${exercise.primaryMuscle}`}
+      accessibilityLabel={`${exercise.name}, ${exercise.category}`}
       accessibilityHint={selected ? 'Removes from selection' : 'Adds to selection'}
       onPress={() => onToggle(exercise)}
       style={({ pressed }) => [
@@ -46,13 +50,25 @@ export const ExerciseListItem = React.memo(function ExerciseListItemBase({
           {exercise.name}
         </Text>
         <Text variant="bodySmall" color="textSecondary" numberOfLines={1} style={styles.muscle}>
-          {exercise.primaryMuscle}
+          {exercise.category}
         </Text>
       </View>
       {selected ? (
         <View style={styles.checkBadge}>
           <CheckIcon color={colors.textOnPrimary} size={18} />
         </View>
+      ) : null}
+      {onInfo ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`View details for ${exercise.name}`}
+          accessibilityHint="Opens exercise information"
+          onPress={() => onInfo(exercise)}
+          hitSlop={spacing.sm}
+          style={({ pressed }) => [styles.infoButton, pressed && styles.infoButtonPressed]}
+        >
+          <TrendingUpCircleIcon color={colors.textSecondary} size={24} />
+        </Pressable>
       ) : null}
     </Pressable>
   );
@@ -99,5 +115,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  infoButton: {
+    width: INFO_BUTTON_SIZE,
+    height: INFO_BUTTON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: INFO_BUTTON_SIZE / 2,
+  },
+  infoButtonPressed: {
+    backgroundColor: colors.surfaceElevated,
   },
 });

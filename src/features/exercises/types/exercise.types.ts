@@ -34,5 +34,5 @@ export interface Page<T> {
 export interface ExerciseFilters {
   search?: string;
   equipment?: string;
-  primaryMuscle?: string;
+  category?: string;
 }

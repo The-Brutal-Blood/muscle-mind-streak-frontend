@@ -98,6 +98,49 @@ export const ChevronDownIcon = React.memo(function ChevronDownIconBase({
   );
 });
 
+export const ChevronLeftIcon = React.memo(function ChevronLeftIconBase({
+  color,
+  size = 20,
+}: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="m15 6-6 6 6 6"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+});
+
+/** Trending-up arrow inside a circle — opens an exercise's detail/insights. */
+export const TrendingUpCircleIcon = React.memo(function TrendingUpCircleIconBase({
+  color,
+  size = 20,
+}: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={STROKE_WIDTH} />
+      <Path
+        d="m8 13.5 2.5-2.5 2 2L16 9.5"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M13.5 9.5H16V12"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+});
+
 export const DotsHorizontalIcon = React.memo(function DotsHorizontalIconBase({
   color,
   size = 20,
@@ -107,6 +150,103 @@ export const DotsHorizontalIcon = React.memo(function DotsHorizontalIconBase({
       <Circle cx={5} cy={12} r={1.8} fill={color} />
       <Circle cx={12} cy={12} r={1.8} fill={color} />
       <Circle cx={19} cy={12} r={1.8} fill={color} />
+    </Svg>
+  );
+});
+
+export const DotsVerticalIcon = React.memo(function DotsVerticalIconBase({
+  color,
+  size = 20,
+}: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={5} r={1.8} fill={color} />
+      <Circle cx={12} cy={12} r={1.8} fill={color} />
+      <Circle cx={12} cy={19} r={1.8} fill={color} />
+    </Svg>
+  );
+});
+
+/** Up/down arrows — reorder affordance. */
+export const ReorderIcon = React.memo(function ReorderIconBase({ color, size = 20 }: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M8 4v16m0 0-3-3m3 3 3-3"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M16 20V4m0 0-3 3m3-3 3 3"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+});
+
+/** Two opposed arrows — swap/replace affordance. */
+export const ReplaceIcon = React.memo(function ReplaceIconBase({ color, size = 20 }: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 8.5h13m0 0-3.5-3.5M17 8.5 13.5 12"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M20 15.5H7m0 0 3.5 3.5M7 15.5 10.5 12"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+});
+
+/** Three stacked lines — drag handle for reorderable rows. */
+export const DragHandleIcon = React.memo(function DragHandleIconBase({
+  color,
+  size = 20,
+}: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 8h16" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+      <Path d="M4 12h16" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+      <Path d="M4 16h16" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+    </Svg>
+  );
+});
+
+export const MinusIcon = React.memo(function MinusIconBase({ color, size = 20 }: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 12h14" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+    </Svg>
+  );
+});
+
+/** Stopwatch — rest-timer affordance. */
+export const TimerIcon = React.memo(function TimerIconBase({ color, size = 20 }: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={13.5} r={7.5} stroke={color} strokeWidth={STROKE_WIDTH} />
+      <Path d="M9.5 2.5h5" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+      <Path d="M12 2.5V6" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+      <Path
+        d="M12 13.5V9.5"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 });
