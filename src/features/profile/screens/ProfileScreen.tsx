@@ -15,6 +15,14 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: 'Prefer not to say',
 };
 
+/** 180 → "180 cm (5'11\")" — appends the rounded imperial equivalent. */
+function formatHeight(cm: number): string {
+  const totalInches = Math.round(cm / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${cm} cm (${feet}'${inches}")`;
+}
+
 /** "Hemant Kashyap" → "HK"; falls back to the first letter of the email. */
 function initialsOf(fullName: string | null, email: string): string {
   const source = fullName?.trim();
@@ -96,7 +104,7 @@ export const ProfileScreen = React.memo(function ProfileScreenBase() {
           <Divider />
           <DetailRow
             label="Height"
-            value={user.heightCm != null ? `${user.heightCm} cm` : 'Not set'}
+            value={user.heightCm != null ? formatHeight(user.heightCm) : 'Not set'}
           />
           <Divider />
           <DetailRow
