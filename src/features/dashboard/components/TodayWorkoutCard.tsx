@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { TimerIcon } from '@/components/icons/ActionIcons';
+import { CheckIcon, TimerIcon } from '@/components/icons/ActionIcons';
 import { DumbbellIcon } from '@/components/icons/TabIcons';
 import { Button, Card, Text } from '@/components/ui';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 import type { HomeTodayWorkout } from '../types/home.types';
 import { formatExerciseCount, formatMinutes } from '../utils/homeFormat';
@@ -14,6 +14,8 @@ export interface TodayWorkoutCardProps {
   onStart: (routineId: string) => void;
   /** Shows a spinner on the Start button while the session is being created. */
   starting?: boolean;
+  /** Today's routine was already finished — replaces Start with a done state. */
+  completed?: boolean;
 }
 
 const META_ICON_SIZE = 16;
@@ -24,6 +26,7 @@ export const TodayWorkoutCard = React.memo(function TodayWorkoutCardBase({
   workout,
   onStart,
   starting = false,
+  completed = false,
 }: TodayWorkoutCardProps) {
   return (
     <Card shadow="md">
@@ -46,17 +49,30 @@ export const TodayWorkoutCard = React.memo(function TodayWorkoutCardBase({
         </View>
       </View>
 
-      <Button
-        label="Start Workout"
-        variant="primary"
-        size="lg"
-        fullWidth
-        loading={starting}
-        onPress={() => onStart(workout.routineId)}
-        accessibilityLabel={`Start ${workout.routineName} workout`}
-        accessibilityHint="Begins a workout session from today's routine"
-        style={styles.startButton}
-      />
+      {completed ? (
+        <View
+          style={styles.completedRow}
+          accessible
+          accessibilityLabel={`${workout.routineName} workout completed today`}
+        >
+          <CheckIcon color={colors.success} size={18} />
+          <Text variant="button" color="success">
+            Workout Completed
+          </Text>
+        </View>
+      ) : (
+        <Button
+          label="Start Workout"
+          variant="primary"
+          size="lg"
+          fullWidth
+          loading={starting}
+          onPress={() => onStart(workout.routineId)}
+          accessibilityLabel={`Start ${workout.routineName} workout`}
+          accessibilityHint="Begins a workout session from today's routine"
+          style={styles.startButton}
+        />
+      )}
     </Card>
   );
 });
@@ -76,5 +92,15 @@ const styles = StyleSheet.create({
   },
   startButton: {
     marginTop: spacing.xl,
+  },
+  completedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceElevated,
   },
 });

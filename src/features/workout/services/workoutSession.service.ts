@@ -1,6 +1,10 @@
 import { apiClient, resolveAssetUrl, toApiError } from '@/api/client';
 
-import type { FinishWorkoutRequest, WorkoutSession } from '../types/workout.types';
+import type {
+  FinishWorkoutRequest,
+  FinishWorkoutResponse,
+  WorkoutSession,
+} from '../types/workout.types';
 
 /**
  * Workout-session service — the single gateway for /workout-sessions requests.
@@ -44,12 +48,21 @@ export function startEmptyWorkoutSession(): Promise<WorkoutSession> {
   return startSession({});
 }
 
+/**
+ * Finishes the session. The response body is optional: when the backend
+ * reports freshly-broken PRs they're passed through for the Home banner;
+ * an empty body finishes normally with no celebration.
+ */
 export async function finishWorkoutSession(
   sessionId: string,
   payload: FinishWorkoutRequest,
-): Promise<void> {
+): Promise<FinishWorkoutResponse | null> {
   try {
-    await apiClient.put(`${ENDPOINT}/${sessionId}/finish`, payload);
+    const { data } = await apiClient.put<FinishWorkoutResponse | undefined>(
+      `${ENDPOINT}/${sessionId}/finish`,
+      payload,
+    );
+    return data ?? null;
   } catch (error) {
     throw toApiError(error);
   }

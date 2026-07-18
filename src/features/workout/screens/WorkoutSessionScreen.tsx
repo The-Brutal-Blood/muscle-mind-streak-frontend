@@ -19,6 +19,7 @@ import { RestTimerSheet } from '../components/RestTimerSheet';
 import { WorkoutExerciseCard } from '../components/WorkoutExerciseCard';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { useElapsedSeconds, WorkoutTimer } from '../components/WorkoutTimer';
+import { usePersonalRecordCelebration } from '../context/PersonalRecordCelebrationContext';
 import { useRestCountdown } from '../hooks/useRestCountdown';
 import {
   useDiscardWorkoutSession,
@@ -76,6 +77,7 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
   const finishMutation = useFinishWorkoutSession();
   const discardMutation = useDiscardWorkoutSession();
   const busy = finishMutation.isPending || discardMutation.isPending;
+  const { celebrate } = usePersonalRecordCelebration();
 
   // Between-sets rest countdown, started when a set is marked complete.
   const rest = useRestCountdown();
@@ -379,8 +381,12 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
     finishMutation.mutate(
       { sessionId: current.sessionId, payload },
       {
-        onSuccess: async () => {
+        onSuccess: async response => {
           finishedRef.current = true;
+          // Queue any freshly-broken PRs for the Home achievement banner.
+          if (Array.isArray(response?.personalRecords) && response.personalRecords.length > 0) {
+            celebrate(response.personalRecords);
+          }
           await clearWorkoutSession();
           onFinished();
         },
@@ -391,7 +397,7 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
           ]),
       },
     );
-  }, [finishMutation, onFinished]);
+  }, [finishMutation, celebrate, onFinished]);
 
   const submitDiscard = useCallback(() => {
     const current = stateRef.current;

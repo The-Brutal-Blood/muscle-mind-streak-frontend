@@ -74,12 +74,27 @@ export interface ExerciseLatestHistory {
   sets: ExerciseHistorySet[];
 }
 
+/** The user's all-time best for this exercise. */
+export interface ExercisePersonalRecord {
+  trackingType?: TrackingType;
+  /** WEIGHT_REPS tracking; null for TIME PRs. */
+  weight: number | null;
+  /** WEIGHT_REPS tracking; null for TIME PRs. */
+  reps: number | null;
+  /** TIME tracking, in seconds; null for weight PRs. */
+  duration: number | null;
+  /** ISO timestamp of when the record was set. */
+  achievedAt: string;
+}
+
 /** Full GET /exercises/:id/history response. */
 export interface ExerciseHistory {
   exerciseId: string;
   exerciseName: string;
   /** How this exercise is tracked; the backend is the source of truth. */
   trackingType?: TrackingType;
+  /** All-time best; null when the exercise has never been performed. */
+  personalRecord?: ExercisePersonalRecord | null;
   /** Null when the exercise has never been performed. */
   lastPerformance: ExerciseLastPerformance | null;
   progress: ExerciseProgressPoint[];

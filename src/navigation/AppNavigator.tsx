@@ -21,6 +21,7 @@ import { HomeWithDrawer } from '@/features/menu/screens/HomeWithDrawer';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { WeightTrackerScreen } from '@/features/weight/screens/WeightTrackerScreen';
 import { MinimizedWorkoutBar } from '@/features/workout/components/MinimizedWorkoutBar';
+import { PersonalRecordCelebrationProvider } from '@/features/workout/context/PersonalRecordCelebrationContext';
 import {
   useWorkoutSessionContext,
   WorkoutSessionProvider,
@@ -244,6 +245,7 @@ function ProfileRoute({ navigation }: ProfileRouteProps) {
 export function AppNavigator() {
   return (
     <WorkoutSessionProvider>
+      <PersonalRecordCelebrationProvider>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -294,6 +296,7 @@ export function AppNavigator() {
         options={{ animation: 'slide_from_right' }}
       />
       </Stack.Navigator>
+      </PersonalRecordCelebrationProvider>
     </WorkoutSessionProvider>
   );
 }

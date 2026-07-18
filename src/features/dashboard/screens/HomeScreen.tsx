@@ -16,6 +16,7 @@ import { Button, Screen, Text } from '@/components/ui';
 import { HomeAppBar } from '@/features/menu/components/HomeAppBar';
 import { LogWeightSheet } from '@/features/weight/components/LogWeightSheet';
 import { bodyWeightKeys, useLogBodyWeight } from '@/features/weight/hooks/useLogBodyWeight';
+import { usePersonalRecordCelebration } from '@/features/workout/context/PersonalRecordCelebrationContext';
 import { useWorkoutSessionContext } from '@/features/workout/context/WorkoutSessionContext';
 import { useStartWorkoutSession } from '@/features/workout/hooks/useWorkoutSession';
 import { toSessionState } from '@/features/workout/utils/workoutSession';
@@ -28,7 +29,9 @@ import { colors, radius, spacing } from '@/theme';
 import { CreateFirstRoutineCard } from '../components/CreateFirstRoutineCard';
 import { GreetingHeader } from '../components/GreetingHeader';
 import { HomeSkeleton } from '../components/HomeSkeleton';
+import { PersonalRecordBanner } from '../components/PersonalRecordBanner';
 import { PersonalRecordCard } from '../components/PersonalRecordCard';
+import { RecentPersonalRecordsCard } from '../components/RecentPersonalRecordsCard';
 import { RecentWorkoutCard } from '../components/RecentWorkoutCard';
 import { RestDayCard } from '../components/RestDayCard';
 import { StatsRow } from '../components/StatsRow';
@@ -56,10 +59,13 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { startSession } = useWorkoutSessionContext();
   const startMutation = useStartWorkoutSession();
-  const [starting, setStarting] = useState(false);
+  // Which of today's routines is being started, so only that card shows a spinner.
+  const [startingRoutineId, setStartingRoutineId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { data: currentUser } = useCurrentUser();
+  // PRs broken by the just-finished workout, celebrated once in a centered card.
+  const { pending: pendingRecords, dismiss: dismissRecords } = usePersonalRecordCelebration();
   const logWeightMutation = useLogBodyWeight();
   const [weightSheetVisible, setWeightSheetVisible] = useState(false);
   const weightPromptedRef = useRef(false);
@@ -84,16 +90,16 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
       if (startMutation.isPending) {
         return;
       }
-      setStarting(true);
+      setStartingRoutineId(routineId);
       startMutation.mutate(routineId, {
         onSuccess: session => {
-          setStarting(false);
+          setStartingRoutineId(null);
           const state = toSessionState(session);
           startSession(state);
           navigation.navigate('WorkoutSession', { initialState: state });
         },
         onError: err => {
-          setStarting(false);
+          setStartingRoutineId(null);
           Alert.alert('Could not start workout', err.message, [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Try Again', onPress: () => handleStartWorkout(routineId) },
@@ -236,6 +242,7 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
   }
 
   return (
+    <View style={styles.flex}>
     <Screen
       scrollable
       edges={['top']}
@@ -266,16 +273,22 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
         <View style={styles.section}>
           {data.isRestDay ? (
             <RestDayCard />
-          ) : data.todayWorkout ? (
+          ) : data.todayWorkouts.length > 0 ? (
             <>
               <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
-                {"Today's Workout"}
+                {"Today's Workouts"}
               </Text>
-              <TodayWorkoutCard
-                workout={data.todayWorkout}
-                onStart={handleStartWorkout}
-                starting={starting}
-              />
+              <View style={styles.workoutList}>
+                {data.todayWorkouts.map(workout => (
+                  <TodayWorkoutCard
+                    key={workout.routineId}
+                    workout={workout}
+                    onStart={handleStartWorkout}
+                    starting={startingRoutineId === workout.routineId}
+                    completed={workout.completedToday}
+                  />
+                ))}
+              </View>
             </>
           ) : (
             <CreateFirstRoutineCard onCreateRoutine={handleCreateRoutine} />
@@ -306,6 +319,15 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
           </View>
         ) : null}
 
+        {data.recentPersonalRecords && data.recentPersonalRecords.length > 0 ? (
+          <View style={styles.section}>
+            <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
+              🏆 Personal Records
+            </Text>
+            <RecentPersonalRecordsCard records={data.recentPersonalRecords} />
+          </View>
+        ) : null}
+
         {data.stats ? (
           <View style={styles.section}>
             <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
@@ -324,10 +346,18 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
         placeholderWeight={currentUser?.weightKg ?? null}
       />
     </Screen>
+
+    {pendingRecords && pendingRecords.length > 0 ? (
+      <PersonalRecordBanner records={pendingRecords} onDismiss={dismissRecords} />
+    ) : null}
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   scrollContent: {
     // Clearance for the bottom tab bar (and the in-progress workout bar).
     paddingBottom: spacing['7xl'],
@@ -337,6 +367,9 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     marginBottom: spacing.md,
+  },
+  workoutList: {
+    gap: spacing.lg,
   },
   errorState: {
     flex: 1,

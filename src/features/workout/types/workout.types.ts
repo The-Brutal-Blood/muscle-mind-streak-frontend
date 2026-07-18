@@ -265,3 +265,34 @@ export interface FinishWorkoutRequest {
   completedSets: number;
   exercises: FinishWorkoutExerciseInput[];
 }
+
+/** One side of a PR comparison: the value fields for either tracking type. */
+export interface PersonalRecordSnapshot {
+  /** WEIGHT_REPS tracking; null for TIME records. */
+  weight: number | null;
+  /** WEIGHT_REPS tracking; null for TIME records. */
+  reps: number | null;
+  /** TIME tracking, in seconds; null for weight records. */
+  duration: number | null;
+}
+
+/**
+ * A PR broken by the workout that was just finished, used by the Home
+ * achievement banner. `current` is the new record; `previous` is the beaten
+ * record, or null when this is the exercise's first PR.
+ */
+export interface BrokenPersonalRecord {
+  exerciseId: string;
+  exerciseName: string;
+  trackingType?: TrackingType;
+  previous: PersonalRecordSnapshot | null;
+  current: PersonalRecordSnapshot;
+}
+
+/**
+ * PUT /workout-sessions/:id/finish response body. Optional throughout —
+ * older backends return no body, and the app must keep working either way.
+ */
+export interface FinishWorkoutResponse {
+  personalRecords?: BrokenPersonalRecord[];
+}
