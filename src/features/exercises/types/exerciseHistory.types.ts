@@ -1,3 +1,5 @@
+import type { TrackingType } from '@/features/workout/types/workout.types';
+
 /**
  * Exercise history domain models — the GET /exercises/:id/history response
  * contract. One request returns everything the History tab renders: the last
@@ -8,8 +10,10 @@
 /** A completed set within a performance, read-only in the History tab. */
 export interface ExerciseHistorySet {
   setNumber: number;
-  weight: number;
-  reps: number;
+  weight: number | null;
+  reps: number | null;
+  /** TIME tracking, in seconds; null/absent for WEIGHT_REPS sets. */
+  duration?: number | null;
 }
 
 /** The most recent time the exercise was performed. Null when never logged. */
@@ -64,6 +68,7 @@ export interface ExerciseHistoryWorkout {
  */
 export interface ExerciseLatestHistory {
   exerciseId: string;
+  trackingType?: TrackingType;
   /** ISO timestamp; null when the exercise has never been performed. */
   performedAt: string | null;
   sets: ExerciseHistorySet[];
@@ -73,6 +78,8 @@ export interface ExerciseLatestHistory {
 export interface ExerciseHistory {
   exerciseId: string;
   exerciseName: string;
+  /** How this exercise is tracked; the backend is the source of truth. */
+  trackingType?: TrackingType;
   /** Null when the exercise has never been performed. */
   lastPerformance: ExerciseLastPerformance | null;
   progress: ExerciseProgressPoint[];

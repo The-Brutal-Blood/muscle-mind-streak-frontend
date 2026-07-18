@@ -1,24 +1,31 @@
 import React from 'react';
-import { Alert, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { DotsVerticalIcon, PlusIcon, TimerIcon } from '@/components/icons/ActionIcons';
+import { CheckIcon, DotsVerticalIcon, PlusIcon, TimerIcon } from '@/components/icons/ActionIcons';
 import { Text } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { columns, WorkoutSetRow } from './WorkoutSetRow';
 import type { WorkoutExerciseState } from '../types/workout.types';
-import { formatRestTimer } from '../utils/restTimer';
+import { formatRestTimer, formatRestTimerCompact } from '../utils/restTimer';
 
 export interface WorkoutExerciseCardProps {
   exercise: WorkoutExerciseState;
   onChangeNotes: (notes: string) => void;
-  onChangeSet: (setId: string, field: 'weight' | 'reps', value: string) => void;
+  onChangeSet: (setId: string, field: 'weight' | 'reps' | 'duration', value: string) => void;
   onToggleSet: (setId: string) => void;
   onAddSet: () => void;
   onRemoveSet: (setId: string) => void;
-  onRemoveExercise: () => void;
+  /** Opens the exercise options sheet (reorder/remove). */
+  onOpenMenu: () => void;
+  /** Opens the exercise's detail screen (info, history, instructions). */
+  onPressExercise?: () => void;
   /** Opens the rest-timer picker for this exercise. */
   onPressRestTimer: () => void;
+  /** Turns the rest timer off (switch flipped to off). */
+  onClearRestTimer: () => void;
+  /** Switches this exercise between weight/reps and duration logging. */
+  onToggleTimerMode: () => void;
 }
 
 const THUMBNAIL_SIZE = 40;
@@ -32,33 +39,42 @@ export const WorkoutExerciseCard = React.memo(function WorkoutExerciseCardBase({
   onToggleSet,
   onAddSet,
   onRemoveSet,
-  onRemoveExercise,
+  onOpenMenu,
+  onPressExercise,
   onPressRestTimer,
+  onClearRestTimer,
+  onToggleTimerMode,
 }: WorkoutExerciseCardProps) {
-  const confirmRemoveExercise = () => {
-    Alert.alert(exercise.exerciseName, undefined, [
-      { text: 'Remove exercise', style: 'destructive', onPress: onRemoveExercise },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const timerMode = exercise.trackingType === 'TIME';
+  const restTimerOn = exercise.restTimerSeconds != null && exercise.restTimerSeconds > 0;
 
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Image
-          source={{ uri: exercise.imageUrl }}
-          style={styles.thumbnail}
-          resizeMode="cover"
-          accessible={false}
-        />
-        <Text variant="title" color="primary" numberOfLines={2} style={styles.title}>
-          {exercise.exerciseName}
-        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`View details for ${exercise.exerciseName}`}
+          accessibilityHint="Opens the exercise's details"
+          disabled={!onPressExercise}
+          onPress={onPressExercise}
+          style={({ pressed }) => [styles.identity, pressed && styles.identityPressed]}
+        >
+          <Image
+            source={{ uri: exercise.imageUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+            accessible={false}
+          />
+          <Text variant="title" color="primary" numberOfLines={2} style={styles.title}>
+            {exercise.exerciseName}
+          </Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Options for ${exercise.exerciseName}`}
-          onPress={confirmRemoveExercise}
+          accessibilityHint="Opens exercise options"
+          onPress={onOpenMenu}
           hitSlop={spacing.sm}
           style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
         >
@@ -77,19 +93,47 @@ export const WorkoutExerciseCard = React.memo(function WorkoutExerciseCardBase({
         accessibilityLabel={`Notes for ${exercise.exerciseName}`}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Rest timer: ${formatRestTimer(exercise.restTimerSeconds)}`}
-        accessibilityHint="Opens the rest timer picker"
-        onPress={onPressRestTimer}
-        hitSlop={spacing.xs}
-        style={({ pressed }) => [styles.restRow, pressed && styles.restRowPressed]}
-      >
-        <TimerIcon color={colors.primary} size={18} />
-        <Text variant="subtitle" color="primary">
-          {`Rest Timer: ${formatRestTimer(exercise.restTimerSeconds)}`}
-        </Text>
-      </Pressable>
+      <View style={styles.modeRow}>
+        <View style={styles.modeGroup}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Rest timer: ${formatRestTimer(exercise.restTimerSeconds)}`}
+            accessibilityHint="Opens the rest timer picker"
+            onPress={onPressRestTimer}
+            hitSlop={spacing.xs}
+            style={({ pressed }) => [styles.restRow, pressed && styles.restRowPressed]}
+          >
+            <TimerIcon color={colors.primary} size={18} />
+            <Text variant="subtitle" color="primary" numberOfLines={1} style={styles.restLabel}>
+              {restTimerOn ? formatRestTimerCompact(exercise.restTimerSeconds) : 'Rest Timer'}
+            </Text>
+          </Pressable>
+          <Switch
+            value={restTimerOn}
+            onValueChange={value => (value ? onPressRestTimer() : onClearRestTimer())}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.textPrimary}
+            ios_backgroundColor={colors.border}
+            accessibilityLabel="Rest timer"
+            style={styles.switch}
+          />
+        </View>
+        <View style={styles.modeGroup}>
+          <Text variant="subtitle" color={timerMode ? 'primary' : 'textSecondary'}>
+            Timer Mode
+          </Text>
+          <Switch
+            value={timerMode}
+            onValueChange={onToggleTimerMode}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.textPrimary}
+            ios_backgroundColor={colors.border}
+            accessibilityLabel="Timer Mode"
+            accessibilityHint="Logs time instead of weight and reps for this exercise"
+            style={styles.switch}
+          />
+        </View>
+      </View>
 
       <View style={styles.tableHeader}>
         <Text variant="label" color="textSecondary" style={columns.set}>
@@ -98,13 +142,23 @@ export const WorkoutExerciseCard = React.memo(function WorkoutExerciseCardBase({
         <Text variant="label" color="textSecondary" style={columns.previous}>
           PREVIOUS
         </Text>
-        <Text variant="label" color="textSecondary" style={columns.valueHeader}>
-          KG
-        </Text>
-        <Text variant="label" color="textSecondary" style={columns.valueHeader}>
-          REPS
-        </Text>
-        <View style={columns.check} />
+        {timerMode ? (
+          <Text variant="label" color="textSecondary" style={columns.timeHeader}>
+            TIME
+          </Text>
+        ) : (
+          <>
+            <Text variant="label" color="textSecondary" style={columns.valueHeader}>
+              KG
+            </Text>
+            <Text variant="label" color="textSecondary" style={columns.valueHeader}>
+              REPS
+            </Text>
+          </>
+        )}
+        <View style={columns.check}>
+          <CheckIcon color={colors.textSecondary} size={14} />
+        </View>
       </View>
 
       {exercise.sets.map((set, index) => (
@@ -114,8 +168,10 @@ export const WorkoutExerciseCard = React.memo(function WorkoutExerciseCardBase({
             index={index}
             set={set}
             previous={exercise.previousSets[index]}
+            timerMode={timerMode}
             onChangeWeight={value => onChangeSet(set.workoutSetId, 'weight', value)}
             onChangeReps={value => onChangeSet(set.workoutSetId, 'reps', value)}
+            onChangeDuration={value => onChangeSet(set.workoutSetId, 'duration', value)}
             onToggleComplete={() => onToggleSet(set.workoutSetId)}
             onRemove={() => onRemoveSet(set.workoutSetId)}
           />
@@ -151,6 +207,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
+  identity: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  identityPressed: {
+    opacity: 0.6,
+  },
   thumbnail: {
     width: THUMBNAIL_SIZE,
     height: THUMBNAIL_SIZE,
@@ -177,12 +242,35 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingVertical: spacing.xs,
   },
+  modeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  modeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexShrink: 1,
+  },
+  // Native switches are oversized next to subtitle text; scale them down.
+  // Scaling shrinks only the visuals, not the layout box — the negative
+  // margins reclaim that dead width so the labels keep their space.
+  switch: {
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+    marginHorizontal: -5,
+  },
   restRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.sm,
+    flexShrink: 1,
+  },
+  // Shrinks with ellipsis instead of running under the adjacent switch.
+  restLabel: {
+    flexShrink: 1,
   },
   restRowPressed: {
     opacity: 0.6,

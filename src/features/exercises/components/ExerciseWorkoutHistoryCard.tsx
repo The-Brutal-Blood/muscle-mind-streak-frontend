@@ -10,6 +10,8 @@ import { formatDuration, formatHistoryDate, formatVolume } from '../utils/exerci
 
 export interface ExerciseWorkoutHistoryCardProps {
   workout: ExerciseHistoryWorkout;
+  /** True when the exercise is TIME-tracked (backend `trackingType`). */
+  timerMode?: boolean;
 }
 
 /**
@@ -18,6 +20,7 @@ export interface ExerciseWorkoutHistoryCardProps {
  */
 export const ExerciseWorkoutHistoryCard = React.memo(function ExerciseWorkoutHistoryCardBase({
   workout,
+  timerMode = false,
 }: ExerciseWorkoutHistoryCardProps) {
   const meta = [formatDuration(workout.durationMinutes), formatVolume(workout.volume)].join(
     '  •  ',
@@ -48,6 +51,8 @@ export const ExerciseWorkoutHistoryCard = React.memo(function ExerciseWorkoutHis
               setNumber={set.setNumber}
               weight={set.weight}
               reps={set.reps}
+              duration={set.duration}
+              timerMode={timerMode}
             />
           ))}
         </View>

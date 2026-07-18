@@ -1,7 +1,7 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { Button, Screen, Text } from '@/components/ui';
 import type { AppTabsParamList } from '@/navigation/AppNavigator';
@@ -24,11 +24,26 @@ export const HistoryScreen = React.memo(function HistoryScreenBase() {
 
   const handleStartWorkout = useCallback(() => navigation.navigate('Workout'), [navigation]);
 
+  // Bumped on every tab focus: refreshes the list from the API and remounts
+  // the cards (new keys) so they always open collapsed.
+  const [focusKey, setFocusKey] = useState(0);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+  useFocusEffect(
+    useCallback(() => {
+      refetchRef.current();
+      setFocusKey(key => key + 1);
+    }, []),
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: WorkoutHistoryItem }) => <WorkoutHistoryCard workout={item} />,
     [],
   );
-  const keyExtractor = useCallback((item: WorkoutHistoryItem) => item.workoutSessionId, []);
+  const keyExtractor = useCallback(
+    (item: WorkoutHistoryItem) => `${focusKey}:${item.workoutSessionId}`,
+    [focusKey],
+  );
 
   const content = data?.content ?? [];
 

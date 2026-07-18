@@ -1,21 +1,33 @@
 import React from 'react';
-import { Alert, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { DotsVerticalIcon, PlusIcon, TimerIcon } from '@/components/icons/ActionIcons';
 import { Text } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { RoutineExerciseDraft } from '../types/workout.types';
-import { formatRestTimer } from '../utils/restTimer';
+import {
+  normalizeDuration,
+  sanitizeDuration,
+  sanitizeReps,
+  sanitizeWeight,
+} from '../utils/inputSanitizers';
+import { formatRestTimer, formatRestTimerCompact } from '../utils/restTimer';
 
 export interface ExerciseCardProps {
   entry: RoutineExerciseDraft;
   onChangeNotes: (notes: string) => void;
   onOpenRestTimer: () => void;
+  /** Turns the rest timer off (switch flipped to off). */
+  onClearRestTimer: () => void;
+  /** Switches this exercise between weight/reps and duration planning. */
+  onToggleTimerMode: () => void;
   onAddSet: () => void;
-  onChangeSet: (setId: string, field: 'kg' | 'reps', value: string) => void;
+  onChangeSet: (setId: string, field: 'kg' | 'reps' | 'duration', value: string) => void;
   onRemoveSet: (setId: string) => void;
   onOpenMenu: () => void;
+  /** Opens the exercise's detail screen (info, history, instructions). */
+  onPressExercise?: () => void;
 }
 
 const THUMBNAIL_SIZE = 40;
@@ -29,12 +41,17 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
   entry,
   onChangeNotes,
   onOpenRestTimer,
+  onClearRestTimer,
+  onToggleTimerMode,
   onAddSet,
   onChangeSet,
   onRemoveSet,
   onOpenMenu,
+  onPressExercise,
 }: ExerciseCardProps) {
   const { exercise, notes, restSeconds, sets } = entry;
+  const timerMode = entry.trackingType === 'TIME';
+  const restTimerOn = restSeconds != null && restSeconds > 0;
 
   const confirmRemoveSet = (setId: string, index: number) => {
     Alert.alert('Remove set', `Remove set ${index + 1}?`, [
@@ -46,15 +63,24 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Image
-          source={{ uri: exercise.imageUrl }}
-          style={styles.thumbnail}
-          resizeMode="cover"
-          accessible={false}
-        />
-        <Text variant="title" color="primary" numberOfLines={2} style={styles.title}>
-          {exercise.name}
-        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`View details for ${exercise.name}`}
+          accessibilityHint="Opens the exercise's details"
+          disabled={!onPressExercise}
+          onPress={onPressExercise}
+          style={({ pressed }) => [styles.identity, pressed && styles.identityPressed]}
+        >
+          <Image
+            source={{ uri: exercise.imageUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+            accessible={false}
+          />
+          <Text variant="title" color="primary" numberOfLines={2} style={styles.title}>
+            {exercise.name}
+          </Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Options for ${exercise.name}`}
@@ -78,30 +104,66 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
         accessibilityLabel={`Notes for ${exercise.name}`}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Rest timer: ${formatRestTimer(restSeconds)}`}
-        accessibilityHint="Opens the rest timer picker"
-        onPress={onOpenRestTimer}
-        hitSlop={spacing.xs}
-        style={({ pressed }) => [styles.restRow, pressed && styles.restRowPressed]}
-      >
-        <TimerIcon color={colors.primary} size={18} />
-        <Text variant="subtitle" color="primary">
-          {`Rest Timer: ${formatRestTimer(restSeconds)}`}
-        </Text>
-      </Pressable>
+      <View style={styles.modeRow}>
+        <View style={styles.modeGroup}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Rest timer: ${formatRestTimer(restSeconds)}`}
+            accessibilityHint="Opens the rest timer picker"
+            onPress={onOpenRestTimer}
+            hitSlop={spacing.xs}
+            style={({ pressed }) => [styles.restRow, pressed && styles.restRowPressed]}
+          >
+            <TimerIcon color={colors.primary} size={18} />
+            <Text variant="subtitle" color="primary" numberOfLines={1} style={styles.restLabel}>
+              {restTimerOn ? formatRestTimerCompact(restSeconds) : 'Rest Timer'}
+            </Text>
+          </Pressable>
+          <Switch
+            value={restTimerOn}
+            onValueChange={value => (value ? onOpenRestTimer() : onClearRestTimer())}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.textPrimary}
+            ios_backgroundColor={colors.border}
+            accessibilityLabel="Rest timer"
+            style={styles.switch}
+          />
+        </View>
+        <View style={styles.modeGroup}>
+          <Text variant="subtitle" color={timerMode ? 'primary' : 'textSecondary'}>
+            Timer Mode
+          </Text>
+          <Switch
+            value={timerMode}
+            onValueChange={onToggleTimerMode}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.textPrimary}
+            ios_backgroundColor={colors.border}
+            accessibilityLabel="Timer Mode"
+            accessibilityHint="Plans time instead of weight and reps for this exercise"
+            style={styles.switch}
+          />
+        </View>
+      </View>
 
       <View style={styles.tableHeader}>
         <Text variant="label" color="textSecondary" style={styles.colSet}>
           SET
         </Text>
-        <Text variant="label" color="textSecondary" style={styles.colValueLabel}>
-          KG
-        </Text>
-        <Text variant="label" color="textSecondary" style={styles.colValueLabel}>
-          REPS
-        </Text>
+        {timerMode ? (
+          <Text variant="label" color="textSecondary" style={styles.colValueLabel}>
+            TIME
+          </Text>
+        ) : (
+          <>
+            <Text variant="label" color="textSecondary" style={styles.colValueLabel}>
+              KG
+            </Text>
+            <Text variant="label" color="textSecondary" style={styles.colValueLabel}>
+              REPS
+            </Text>
+          </>
+        )}
       </View>
 
       {sets.map((set, index) => (
@@ -117,32 +179,53 @@ export const ExerciseCard = React.memo(function ExerciseCardBase({
           <Text variant="subtitle" style={styles.colSet}>
             {index + 1}
           </Text>
-          <View style={styles.colValue}>
-            <TextInput
-              value={set.kg}
-              onChangeText={text => onChangeSet(set.id, 'kg', text)}
-              placeholder="-"
-              placeholderTextColor={colors.placeholder}
-              selectionColor={colors.primary}
-              keyboardType="numeric"
-              maxLength={6}
-              style={styles.cellInput}
-              accessibilityLabel={`Set ${index + 1} weight in kilograms`}
-            />
-          </View>
-          <View style={styles.colValue}>
-            <TextInput
-              value={set.reps}
-              onChangeText={text => onChangeSet(set.id, 'reps', text)}
-              placeholder="-"
-              placeholderTextColor={colors.placeholder}
-              selectionColor={colors.primary}
-              keyboardType="numeric"
-              maxLength={4}
-              style={styles.cellInput}
-              accessibilityLabel={`Set ${index + 1} repetitions`}
-            />
-          </View>
+          {timerMode ? (
+            <View style={styles.colValue}>
+              <TextInput
+                value={set.duration ?? ''}
+                onChangeText={text => onChangeSet(set.id, 'duration', sanitizeDuration(text))}
+                onEndEditing={() =>
+                  onChangeSet(set.id, 'duration', normalizeDuration(set.duration ?? ''))
+                }
+                placeholder="00:00"
+                placeholderTextColor={colors.placeholder}
+                selectionColor={colors.primary}
+                keyboardType="numbers-and-punctuation"
+                maxLength={6}
+                style={styles.cellInput}
+                accessibilityLabel={`Set ${index + 1} duration in minutes and seconds`}
+              />
+            </View>
+          ) : (
+            <>
+              <View style={styles.colValue}>
+                <TextInput
+                  value={set.kg}
+                  onChangeText={text => onChangeSet(set.id, 'kg', sanitizeWeight(text))}
+                  placeholder="-"
+                  placeholderTextColor={colors.placeholder}
+                  selectionColor={colors.primary}
+                  keyboardType="numeric"
+                  maxLength={6}
+                  style={styles.cellInput}
+                  accessibilityLabel={`Set ${index + 1} weight in kilograms`}
+                />
+              </View>
+              <View style={styles.colValue}>
+                <TextInput
+                  value={set.reps}
+                  onChangeText={text => onChangeSet(set.id, 'reps', sanitizeReps(text))}
+                  placeholder="-"
+                  placeholderTextColor={colors.placeholder}
+                  selectionColor={colors.primary}
+                  keyboardType="numeric"
+                  maxLength={4}
+                  style={styles.cellInput}
+                  accessibilityLabel={`Set ${index + 1} repetitions`}
+                />
+              </View>
+            </>
+          )}
         </Pressable>
       ))}
 
@@ -175,6 +258,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
+  identity: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  identityPressed: {
+    opacity: 0.6,
+  },
   thumbnail: {
     width: THUMBNAIL_SIZE,
     height: THUMBNAIL_SIZE,
@@ -201,12 +293,35 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingVertical: spacing.xs,
   },
+  modeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  modeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexShrink: 1,
+  },
+  // Native switches are oversized next to subtitle text; scale them down.
+  // Scaling shrinks only the visuals, not the layout box — the negative
+  // margins reclaim that dead width so the labels keep their space.
+  switch: {
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+    marginHorizontal: -5,
+  },
   restRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.sm,
+    flexShrink: 1,
+  },
+  // Shrinks with ellipsis instead of running under the adjacent switch.
+  restLabel: {
+    flexShrink: 1,
   },
   restRowPressed: {
     opacity: 0.6,

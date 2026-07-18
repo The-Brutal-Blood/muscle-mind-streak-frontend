@@ -10,6 +10,8 @@ import { formatHistoryDate, formatVolume } from '../utils/exerciseHistoryFormat'
 
 export interface LastPerformanceCardProps {
   performance: ExerciseLastPerformance;
+  /** True when the exercise is TIME-tracked (backend `trackingType`). */
+  timerMode?: boolean;
 }
 
 /**
@@ -18,6 +20,7 @@ export interface LastPerformanceCardProps {
  */
 export const LastPerformanceCard = React.memo(function LastPerformanceCardBase({
   performance,
+  timerMode = false,
 }: LastPerformanceCardProps) {
   return (
     <Card>
@@ -53,6 +56,8 @@ export const LastPerformanceCard = React.memo(function LastPerformanceCardBase({
             setNumber={set.setNumber}
             weight={set.weight}
             reps={set.reps}
+            duration={set.duration}
+            timerMode={timerMode}
           />
         ))}
       </View>

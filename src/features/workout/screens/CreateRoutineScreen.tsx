@@ -7,6 +7,7 @@ import { Button, Loader, Screen, Text } from '@/components/ui';
 import type { Exercise } from '@/features/exercises/types/exercise.types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, radius, spacing, typography } from '@/theme';
+import { secondsToDuration } from '@/utils/duration';
 
 import { ExerciseCard } from '../components/ExerciseCard';
 import { ExerciseMenuSheet } from '../components/ExerciseMenuSheet';
@@ -38,6 +39,8 @@ export interface CreateRoutineScreenProps {
   onAddExercise?: () => void;
   /** Opens the library to replace the given exercise. Navigation is owned by the caller. */
   onReplaceExercise?: (targetId: string) => void;
+  /** Opens an exercise's detail screen. Navigation is owned by the caller. */
+  onOpenExerciseDetail?: (exerciseId: string) => void;
   /** Dismisses the screen without saving. Navigation is owned by the caller. */
   onCancel?: () => void;
   /** Fired after the routine is persisted. Navigation is owned by the caller. */
@@ -54,6 +57,7 @@ function createEntry(exercise: Exercise, setId: string): RoutineExerciseDraft {
     exercise,
     notes: '',
     restSeconds: null,
+    trackingType: exercise.trackingType ?? 'WEIGHT_REPS',
     sets: [{ id: setId, kg: '', reps: '' }],
   };
 }
@@ -70,6 +74,7 @@ function detailToEntries(
         id: nextSetId(),
         kg: set.weight != null ? String(set.weight) : '',
         reps: set.reps != null ? String(set.reps) : '',
+        duration: set.duration != null ? secondsToDuration(set.duration) : '',
       }));
       return {
         exercise: {
@@ -82,6 +87,8 @@ function detailToEntries(
           exercise.restTimerSeconds != null && exercise.restTimerSeconds > 0
             ? exercise.restTimerSeconds
             : null,
+        // Backend is the source of truth for how the exercise is tracked.
+        trackingType: exercise.trackingType ?? 'WEIGHT_REPS',
         sets: sets.length > 0 ? sets : [{ id: nextSetId(), kg: '', reps: '' }],
       };
     });
@@ -94,6 +101,7 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
   replacement,
   onAddExercise,
   onReplaceExercise,
+  onOpenExerciseDetail,
   onCancel,
   onSaved,
 }: CreateRoutineScreenProps) {
@@ -212,7 +220,16 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
     [updateEntry],
   );
 
-  // Add Set duplicates the last row's values (weight/reps) as a starting point.
+  const handleToggleTimerMode = useCallback(
+    (exerciseId: string) =>
+      updateEntry(exerciseId, entry => ({
+        ...entry,
+        trackingType: entry.trackingType === 'TIME' ? 'WEIGHT_REPS' : 'TIME',
+      })),
+    [updateEntry],
+  );
+
+  // Add Set duplicates the last row's values (weight/reps/duration) as a starting point.
   const handleAddSet = useCallback(
     (exerciseId: string) =>
       updateEntry(exerciseId, entry => {
@@ -221,7 +238,12 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
           ...entry,
           sets: [
             ...entry.sets,
-            { id: nextSetId(), kg: previous?.kg ?? '', reps: previous?.reps ?? '' },
+            {
+              id: nextSetId(),
+              kg: previous?.kg ?? '',
+              reps: previous?.reps ?? '',
+              duration: previous?.duration,
+            },
           ],
         };
       }),
@@ -229,7 +251,7 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
   );
 
   const handleChangeSet = useCallback(
-    (exerciseId: string, setId: string, field: 'kg' | 'reps', value: string) =>
+    (exerciseId: string, setId: string, field: 'kg' | 'reps' | 'duration', value: string) =>
       updateEntry(exerciseId, entry => ({
         ...entry,
         sets: entry.sets.map(set => (set.id === setId ? { ...set, [field]: value } : set)),
@@ -478,7 +500,10 @@ export const CreateRoutineScreen = React.memo(function CreateRoutineScreenBase({
                     key={entry.exercise.id}
                     entry={entry}
                     onChangeNotes={notes => handleChangeNotes(entry.exercise.id, notes)}
+                    onPressExercise={() => onOpenExerciseDetail?.(entry.exercise.id)}
                     onOpenRestTimer={() => setRestSheetFor(entry.exercise.id)}
+                    onClearRestTimer={() => handleSetRest(entry.exercise.id, null)}
+                    onToggleTimerMode={() => handleToggleTimerMode(entry.exercise.id)}
                     onAddSet={() => handleAddSet(entry.exercise.id)}
                     onChangeSet={(setId, field, value) =>
                       handleChangeSet(entry.exercise.id, setId, field, value)

@@ -27,3 +27,8 @@ export function formatRestTimer(seconds: number | null): string {
 export function formatRestOption(seconds: number | null): string {
   return seconds == null || seconds <= 0 ? 'off' : formatRestTimer(seconds);
 }
+
+/** Extra-compact variant for tight rows next to a switch, e.g. "1m 30s". */
+export function formatRestTimerCompact(seconds: number | null): string {
+  return formatRestTimer(seconds).replace('min', 'm');
+}

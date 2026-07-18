@@ -15,8 +15,10 @@ export interface ExerciseMenuSheetProps {
   /** Named in the sheet header, e.g. the exercise being acted on. */
   exerciseName?: string;
   onReorder: () => void;
-  onReplace: () => void;
-  onAddToSuperset: () => void;
+  /** Omit to hide the Replace action (e.g. in the live session). */
+  onReplace?: () => void;
+  /** Omit to hide the Superset action (e.g. in the live session). */
+  onAddToSuperset?: () => void;
   onRemove: () => void;
   onClose: () => void;
 }
@@ -57,20 +59,28 @@ export const ExerciseMenuSheet = React.memo(function ExerciseMenuSheetBase({
       color: 'textPrimary',
       onPress: run(onReorder),
     },
-    {
-      key: 'replace',
-      label: 'Replace Exercise',
-      icon: <ReplaceIcon color={colors.textPrimary} size={ICON_SIZE} />,
-      color: 'textPrimary',
-      onPress: run(onReplace),
-    },
-    {
-      key: 'superset',
-      label: 'Add To Superset',
-      icon: <PlusIcon color={colors.textPrimary} size={ICON_SIZE} />,
-      color: 'textPrimary',
-      onPress: run(onAddToSuperset),
-    },
+    ...(onReplace
+      ? [
+          {
+            key: 'replace',
+            label: 'Replace Exercise',
+            icon: <ReplaceIcon color={colors.textPrimary} size={ICON_SIZE} />,
+            color: 'textPrimary' as ColorToken,
+            onPress: run(onReplace),
+          },
+        ]
+      : []),
+    ...(onAddToSuperset
+      ? [
+          {
+            key: 'superset',
+            label: 'Add To Superset',
+            icon: <PlusIcon color={colors.textPrimary} size={ICON_SIZE} />,
+            color: 'textPrimary' as ColorToken,
+            onPress: run(onAddToSuperset),
+          },
+        ]
+      : []),
     {
       key: 'remove',
       label: 'Remove Exercise',

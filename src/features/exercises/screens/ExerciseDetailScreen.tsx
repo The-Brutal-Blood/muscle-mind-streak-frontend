@@ -7,6 +7,7 @@ import { colors, radius, spacing } from '@/theme';
 
 import { ExerciseGif } from '../components/ExerciseGif';
 import { ExerciseHistoryTab } from '../components/ExerciseHistoryTab';
+import { ExerciseProgressSection } from '../components/ExerciseProgressSection';
 import { useExerciseDetail } from '../hooks/useExerciseDetail';
 import type { Exercise } from '../types/exercise.types';
 
@@ -108,9 +109,6 @@ export const ExerciseDetailScreen = React.memo(function ExerciseDetailScreenBase
 });
 
 function SummaryTab({ exercise }: { exercise: Exercise }) {
-  const secondary =
-    exercise.secondaryMuscle.length > 0 ? exercise.secondaryMuscle.join(', ') : '—';
-
   return (
     <ScrollView
       style={styles.flex}
@@ -121,12 +119,11 @@ function SummaryTab({ exercise }: { exercise: Exercise }) {
 
       <View style={styles.detailsCard}>
         <DetailRow label="Primary muscle" value={exercise.primaryMuscle} />
-        <DetailRow label="Secondary muscles" value={secondary} />
-        <DetailRow label="Target" value={exercise.target} />
-        <DetailRow label="Body part" value={exercise.bodyPart} />
         <DetailRow label="Category" value={exercise.category} />
         <DetailRow label="Equipment" value={exercise.equipment} last />
       </View>
+
+      <ExerciseProgressSection exerciseId={exercise.id} />
     </ScrollView>
   );
 }

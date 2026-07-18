@@ -5,6 +5,12 @@
  */
 
 /**
+ * How an exercise is tracked. The backend is the source of truth — the
+ * frontend never infers this.
+ */
+export type TrackingType = 'WEIGHT_REPS' | 'TIME';
+
+/**
  * The exercise identity the routine editor needs. A full library `Exercise`
  * satisfies it structurally; a saved routine supplies just these fields.
  */
@@ -21,6 +27,8 @@ export interface RoutineSetDraft {
   kg: string;
   /** Target repetitions as typed by the user; empty until entered. */
   reps: string;
+  /** TIME tracking: duration as typed ("MM:SS"); sent as seconds on save. */
+  duration?: string;
 }
 
 /** An exercise as configured inside a routine draft: notes, rest, and sets. */
@@ -30,6 +38,8 @@ export interface RoutineExerciseDraft {
   /** Rest between sets, in seconds; `null` means the timer is off. */
   restSeconds: number | null;
   sets: RoutineSetDraft[];
+  /** How this exercise is tracked; the Timer Mode switch flips it. */
+  trackingType: TrackingType;
 }
 
 /**
@@ -48,13 +58,18 @@ export type Weekday =
 /** Payload contracts for POST /routines. */
 export interface CreateRoutineSetInput {
   setNumber: number;
-  weight: number;
-  reps: number;
+  /** WEIGHT_REPS tracking only; null for TIME sets. */
+  weight: number | null;
+  /** WEIGHT_REPS tracking only; null for TIME sets. */
+  reps: number | null;
+  /** TIME tracking only, in seconds; null for WEIGHT_REPS sets. */
+  duration: number | null;
 }
 
 export interface CreateRoutineExerciseInput {
   exerciseId: string;
   displayOrder: number;
+  trackingType: TrackingType;
   /** Omitted when the rest timer is off. */
   restTimerSeconds?: number;
   /** Omitted when the user left notes blank. */
@@ -81,8 +96,10 @@ export interface RoutineOverview {
 /** Full routine detail from GET /routines/:id (also the PUT response shape). */
 export interface RoutineDetailSet {
   setNumber: number;
-  weight: number;
-  reps: number;
+  weight: number | null;
+  reps: number | null;
+  /** TIME tracking, in seconds; null/absent for WEIGHT_REPS sets. */
+  duration?: number | null;
 }
 
 export interface RoutineDetailExercise {
@@ -91,6 +108,7 @@ export interface RoutineDetailExercise {
   exerciseName: string;
   imageUrl: string;
   displayOrder: number;
+  trackingType?: TrackingType;
   restTimerSeconds?: number | null;
   notes?: string | null;
   sets: RoutineDetailSet[];
@@ -118,6 +136,8 @@ export interface WorkoutPreviousSet {
   setNumber: number;
   weight: number | null;
   reps: number | null;
+  /** TIME tracking, in seconds; null/absent for WEIGHT_REPS sets. */
+  duration?: number | null;
 }
 
 export interface WorkoutServerSet {
@@ -125,8 +145,12 @@ export interface WorkoutServerSet {
   setNumber: number;
   targetWeight: number | null;
   targetReps: number | null;
+  /** TIME tracking target, in seconds. */
+  targetDuration?: number | null;
   actualWeight: number | null;
   actualReps: number | null;
+  /** TIME tracking actual, in seconds. */
+  duration?: number | null;
   completed: boolean;
 }
 
@@ -136,6 +160,7 @@ export interface WorkoutServerExercise {
   exerciseName: string;
   imageUrl: string;
   displayOrder: number;
+  trackingType?: TrackingType;
   restTimerSeconds: number | null;
   notes: string;
   previousSets: WorkoutPreviousSet[];
@@ -170,6 +195,11 @@ export interface WorkoutSetState {
    * edit or completion.
    */
   prefilled?: boolean;
+  /**
+   * TIME tracking: duration as typed/displayed ("MM:SS"); converted to
+   * seconds for the finish payload.
+   */
+  duration?: string;
 }
 
 export interface WorkoutExerciseState {
@@ -181,6 +211,12 @@ export interface WorkoutExerciseState {
   notes: string;
   previousSets: WorkoutPreviousSet[];
   sets: WorkoutSetState[];
+  /**
+   * How this exercise is tracked. Seeded from the backend on session start;
+   * the Timer Mode switch flips it. Absent on sessions persisted before this
+   * field existed — treat as WEIGHT_REPS.
+   */
+  trackingType?: TrackingType;
 }
 
 /** The whole in-progress session held in local state and persisted for resume. */
@@ -196,8 +232,12 @@ export interface WorkoutSessionState {
 export interface FinishWorkoutSetInput {
   /** `null` for sets added mid-session; the backend assigns a UUID. */
   workoutSetId: string | null;
+  /** WEIGHT_REPS tracking only; null for TIME sets. */
   actualWeight: number | null;
+  /** WEIGHT_REPS tracking only; null for TIME sets. */
   actualReps: number | null;
+  /** TIME tracking only, in seconds; null for WEIGHT_REPS sets. */
+  duration: number | null;
   completed: boolean;
 }
 
@@ -210,6 +250,11 @@ export interface FinishWorkoutExerciseInput {
    * omitted for exercises the session already owns.
    */
   exerciseId?: string;
+  /**
+   * Sent only for exercises added mid-session (with `exerciseId`) so the
+   * backend stores how the new exercise is tracked.
+   */
+  trackingType?: TrackingType;
   notes: string;
   sets: FinishWorkoutSetInput[];
 }

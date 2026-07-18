@@ -28,6 +28,7 @@ export const HistoryEmptyState = React.memo(function HistoryEmptyStateBase({
         onPress={onStartWorkout}
         accessibilityLabel="Start Workout"
         accessibilityHint="Opens the Workout tab to start a routine"
+        style={styles.button}
       />
     </View>
   );
@@ -47,5 +48,9 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: spacing.sm,
     marginBottom: spacing['2xl'],
+  },
+  // The Button component defaults to alignSelf:'flex-start'; recenter it.
+  button: {
+    alignSelf: 'center',
   },
 });

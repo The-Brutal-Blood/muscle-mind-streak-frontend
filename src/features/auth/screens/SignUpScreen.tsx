@@ -10,6 +10,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 
+import { ChevronLeftIcon } from '@/components/icons/ActionIcons';
 import { Button, Input, Screen, Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { colors, radius, spacing } from '@/theme';
@@ -24,6 +25,8 @@ export interface SignUpScreenProps {
    * Receives the normalized email; navigation is owned by the caller.
    */
   onRegistered?: (email: string) => void;
+  /** Returns to the previous screen. Rendered as a back button when provided. */
+  onBack?: () => void;
 }
 
 const FORM_SLIDE_DISTANCE = 24;
@@ -54,6 +57,7 @@ const VisibilityToggle = React.memo(function VisibilityToggleBase({
 
 export const SignUpScreen = React.memo(function SignUpScreenBase({
   onRegistered,
+  onBack,
 }: SignUpScreenProps) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -120,6 +124,18 @@ export const SignUpScreen = React.memo(function SignUpScreenBase({
   return (
     <Screen scrollable>
       <Animated.View style={[styles.root, { opacity: screenOpacity }]}>
+        {onBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            accessibilityHint="Returns to the previous screen"
+            onPress={onBack}
+            hitSlop={spacing.sm}
+            style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+          >
+            <ChevronLeftIcon color={colors.textPrimary} size={24} />
+          </Pressable>
+        ) : null}
         <View style={styles.header}>
           <Text variant="headingXL" accessibilityRole="header">
             Create your account
@@ -246,7 +262,19 @@ export const SignUpScreen = React.memo(function SignUpScreenBase({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    paddingTop: spacing['4xl'],
+    paddingTop: spacing.lg,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    marginLeft: -spacing.sm,
+    marginBottom: spacing.lg,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonPressed: {
+    backgroundColor: colors.surface,
   },
   header: {
     marginBottom: spacing['3xl'],

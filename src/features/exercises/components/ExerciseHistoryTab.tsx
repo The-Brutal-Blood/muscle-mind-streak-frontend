@@ -1,15 +1,13 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Text } from '@/components/ui';
+import { Button, Text } from '@/components/ui';
 import { colors, radius, spacing } from '@/theme';
 
 import { ExerciseHistoryEmptyState } from './ExerciseHistoryEmptyState';
 import { ExerciseHistorySkeleton } from './ExerciseHistorySkeleton';
-import { ExerciseStatsGrid } from './ExerciseStatsGrid';
 import { ExerciseWorkoutHistoryCard } from './ExerciseWorkoutHistoryCard';
 import { LastPerformanceCard } from './LastPerformanceCard';
-import { StrengthProgressChart, type StrengthProgressPoint } from './StrengthProgressChart';
 import { useExerciseHistory } from '../hooks/useExerciseHistory';
 
 export interface ExerciseHistoryTabProps {
@@ -17,24 +15,15 @@ export interface ExerciseHistoryTabProps {
 }
 
 /**
- * The Exercise Detail "History" tab — an analytics view sourced entirely from
- * GET /exercises/:id/history: last performance, strength progress, statistics,
- * and the full workout log (newest first). Handles its own loading, error and
- * empty states.
+ * The Exercise Detail "History" tab — the last performance and the full
+ * workout log (newest first), sourced from GET /exercises/:id/history.
+ * Strength progress and statistics live on the Summary tab. Handles its own
+ * loading, error and empty states.
  */
 export const ExerciseHistoryTab = React.memo(function ExerciseHistoryTabBase({
   exerciseId,
 }: ExerciseHistoryTabProps) {
   const { data, isPending, isError, refetch } = useExerciseHistory(exerciseId);
-
-  // Only points with a recorded max weight are plotted (nulls are dropped).
-  const chartPoints = useMemo<StrengthProgressPoint[]>(
-    () =>
-      (data?.progress ?? [])
-        .filter((point): point is { date: string; maxWeight: number } => point.maxWeight != null)
-        .map(point => ({ date: point.date, maxWeight: point.maxWeight })),
-    [data],
-  );
 
   // Newest first, regardless of the order the API returns.
   const workouts = useMemo(
@@ -86,43 +75,25 @@ export const ExerciseHistoryTab = React.memo(function ExerciseHistoryTabBase({
       showsVerticalScrollIndicator={false}
     >
       {/* 1. Last Performance */}
-      {data.lastPerformance ? <LastPerformanceCard performance={data.lastPerformance} /> : null}
+      {data.lastPerformance ? (
+        <LastPerformanceCard
+          performance={data.lastPerformance}
+          timerMode={data.trackingType === 'TIME'}
+        />
+      ) : null}
 
-      {/* 2. Strength Progress */}
+      {/* 2. Workout History */}
       <View style={data.lastPerformance ? styles.section : undefined}>
-        <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
-          Strength Progress
-        </Text>
-        <Card>
-          {chartPoints.length > 0 ? (
-            <StrengthProgressChart points={chartPoints} />
-          ) : (
-            <View style={styles.chartEmpty}>
-              <Text style={styles.chartEmptyEmoji}>📈</Text>
-              <Text variant="body" color="textSecondary" align="center">
-                No strength data yet.
-              </Text>
-            </View>
-          )}
-        </Card>
-      </View>
-
-      {/* 3. Statistics */}
-      <View style={styles.section}>
-        <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
-          Statistics
-        </Text>
-        <ExerciseStatsGrid statistics={data.statistics} />
-      </View>
-
-      {/* 4. Workout History */}
-      <View style={styles.section}>
         <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
           Workout History
         </Text>
         <View style={styles.historyList}>
           {workouts.map(workout => (
-            <ExerciseWorkoutHistoryCard key={workout.workoutSessionId} workout={workout} />
+            <ExerciseWorkoutHistoryCard
+              key={workout.workoutSessionId}
+              workout={workout}
+              timerMode={data.trackingType === 'TIME'}
+            />
           ))}
         </View>
       </View>
@@ -146,15 +117,6 @@ const styles = StyleSheet.create({
   },
   historyList: {
     gap: spacing.lg,
-  },
-  chartEmpty: {
-    height: 168,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  chartEmptyEmoji: {
-    fontSize: 32,
   },
   emptyContent: {
     flexGrow: 1,

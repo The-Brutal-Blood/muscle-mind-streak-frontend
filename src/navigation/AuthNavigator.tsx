@@ -48,7 +48,12 @@ function WelcomeRoute({ navigation }: WelcomeRouteProps) {
  * profile case routes onward, into onboarding.
  */
 function LoginRoute({ navigation }: LoginRouteProps) {
-  return <LoginScreen onNeedsProfileSetup={() => navigation.replace('CompleteProfile')} />;
+  return (
+    <LoginScreen
+      onNeedsProfileSetup={() => navigation.replace('CompleteProfile')}
+      onBack={() => navigation.goBack()}
+    />
+  );
 }
 
 /**
@@ -56,7 +61,12 @@ function LoginRoute({ navigation }: LoginRouteProps) {
  * normalized email forward as a route param for verification.
  */
 function SignupRoute({ navigation }: SignupRouteProps) {
-  return <SignUpScreen onRegistered={email => navigation.navigate('VerifyOtp', { email })} />;
+  return (
+    <SignUpScreen
+      onRegistered={email => navigation.navigate('VerifyOtp', { email })}
+      onBack={() => navigation.goBack()}
+    />
+  );
 }
 
 /**

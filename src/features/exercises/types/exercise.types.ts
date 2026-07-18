@@ -1,8 +1,12 @@
+import type { TrackingType } from '@/features/workout/types/workout.types';
+
 /** Contracts for the exercise library endpoints (/exercises). */
 
 export interface Exercise {
   id: string;
   name: string;
+  /** How this exercise is tracked; the backend is the source of truth. */
+  trackingType?: TrackingType;
   category: string;
   bodyPart: string;
   equipment: string;

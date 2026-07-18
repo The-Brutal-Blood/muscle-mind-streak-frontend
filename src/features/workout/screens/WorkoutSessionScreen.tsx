@@ -12,6 +12,8 @@ import {
 } from '@/storage/workoutSession.storage';
 import { colors, radius, spacing } from '@/theme';
 
+import { ExerciseMenuSheet } from '../components/ExerciseMenuSheet';
+import { ReorderExercisesModal } from '../components/ReorderExercisesModal';
 import { RestTimerBar } from '../components/RestTimerBar';
 import { RestTimerSheet } from '../components/RestTimerSheet';
 import { WorkoutExerciseCard } from '../components/WorkoutExerciseCard';
@@ -46,9 +48,13 @@ export interface WorkoutSessionScreenProps {
   onDiscarded: () => void;
   /** Opens the exercise library. Navigation owned by caller. */
   onAddExercise: () => void;
+  /** Opens an exercise's detail screen. Navigation owned by caller. */
+  onOpenExerciseDetail?: (exerciseId: string) => void;
 }
 
 const PERSIST_INTERVAL_MS = 30000;
+/** Rough duration of the options sheet's slide-out, before opening the next modal. */
+const MENU_DISMISS_MS = 300;
 
 export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase({
   initialState,
@@ -57,11 +63,15 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
   onFinished,
   onDiscarded,
   onAddExercise,
+  onOpenExerciseDetail,
 }: WorkoutSessionScreenProps) {
   const [state, setState] = useState<WorkoutSessionState | null>(initialState ?? null);
   const [restoring, setRestoring] = useState(!initialState);
   // workoutExerciseId whose rest-timer picker is open, or null when closed.
   const [restSheetFor, setRestSheetFor] = useState<string | null>(null);
+  // workoutExerciseId whose options sheet is open, or null when closed.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [reorderVisible, setReorderVisible] = useState(false);
 
   const finishMutation = useFinishWorkoutSession();
   const discardMutation = useDiscardWorkoutSession();
@@ -138,6 +148,7 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
         exerciseId: exercise.id,
         exerciseName: exercise.name,
         imageUrl: exercise.imageUrl,
+        trackingType: exercise.trackingType ?? 'WEIGHT_REPS',
         restTimerSeconds: null,
         notes: '',
         previousSets: [],
@@ -159,6 +170,7 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
             setNumber: set.setNumber,
             weight: set.weight,
             reps: set.reps,
+            duration: set.duration ?? null,
           }));
           setState(current =>
             current
@@ -207,8 +219,17 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
     [updateExercise],
   );
 
+  const handleToggleTimerMode = useCallback(
+    (exerciseId: string) =>
+      updateExercise(exerciseId, exercise => ({
+        ...exercise,
+        trackingType: exercise.trackingType === 'TIME' ? 'WEIGHT_REPS' : 'TIME',
+      })),
+    [updateExercise],
+  );
+
   const handleChangeSet = useCallback(
-    (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) =>
+    (exerciseId: string, setId: string, field: 'weight' | 'reps' | 'duration', value: string) =>
       updateExercise(exerciseId, exercise => ({
         ...exercise,
         sets: exercise.sets.map(set =>
@@ -252,13 +273,24 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
         const nextNumber = (lastSet?.setNumber ?? 0) + 1;
         const fresh = createEmptySet(`${LOCAL_SET_ID_PREFIX}${setSeq.current++}`, nextNumber);
         // Carry the last set's values forward as a dimmed suggestion.
-        const hasCarryOver = Boolean(lastSet && (lastSet.weight !== '' || lastSet.reps !== ''));
+        const hasCarryOver = Boolean(
+          lastSet &&
+            (exercise.trackingType === 'TIME'
+              ? (lastSet.duration ?? '') !== ''
+              : lastSet.weight !== '' || lastSet.reps !== ''),
+        );
         return {
           ...exercise,
           sets: [
             ...exercise.sets,
             hasCarryOver
-              ? { ...fresh, weight: lastSet!.weight, reps: lastSet!.reps, prefilled: true }
+              ? {
+                  ...fresh,
+                  weight: lastSet!.weight,
+                  reps: lastSet!.reps,
+                  duration: lastSet!.duration,
+                  prefilled: true,
+                }
               : fresh,
           ],
         };
@@ -288,11 +320,46 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
     );
   }, []);
 
+  // Reconcile the reorder editor's result: apply the new order, drop removals.
+  // Persist right away so the order survives even an immediate app kill.
+  const applyReorder = useCallback(
+    (orderedIds: string[]) => {
+      setState(current => {
+        if (!current) {
+          return current;
+        }
+        const byId = new Map(
+          current.exercises.map(exercise => [exercise.workoutExerciseId, exercise]),
+        );
+        const exercises = orderedIds
+          .map(id => byId.get(id))
+          .filter((exercise): exercise is WorkoutExerciseState => exercise != null);
+        return { ...current, exercises };
+      });
+      setTimeout(persist, 0);
+    },
+    [persist],
+  );
+
   const volume = useMemo(() => (state ? computeVolume(state) : 0), [state]);
   const completedSets = useMemo(() => (state ? countCompletedSets(state) : 0), [state]);
+  // Stable identity across the every-second timer re-renders, so the reorder
+  // modal's internal drag state isn't reset while it's open.
+  const reorderItems = useMemo(
+    () =>
+      (state?.exercises ?? []).map(exercise => ({
+        id: exercise.workoutExerciseId,
+        name: exercise.exerciseName,
+        imageUrl: exercise.imageUrl,
+      })),
+    [state?.exercises],
+  );
   const elapsed = useElapsedSeconds(state?.startedAt ?? '');
   const restSheetExercise = restSheetFor
     ? state?.exercises.find(exercise => exercise.workoutExerciseId === restSheetFor)
+    : undefined;
+  const menuExercise = menuFor
+    ? state?.exercises.find(exercise => exercise.workoutExerciseId === menuFor)
     : undefined;
 
   const submitFinish = useCallback(() => {
@@ -361,6 +428,11 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
   const handleAddExercise = () => {
     persist();
     onAddExercise();
+  };
+
+  const handleOpenExerciseDetail = (exerciseId: string) => {
+    persist();
+    onOpenExerciseDetail?.(exerciseId);
   };
 
   if (restoring) {
@@ -436,8 +508,11 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
             onToggleSet={setId => handleToggleSet(exercise.workoutExerciseId, setId)}
             onAddSet={() => handleAddSet(exercise.workoutExerciseId)}
             onRemoveSet={setId => handleRemoveSet(exercise.workoutExerciseId, setId)}
-            onRemoveExercise={() => handleRemoveExercise(exercise.workoutExerciseId)}
+            onOpenMenu={() => setMenuFor(exercise.workoutExerciseId)}
+            onPressExercise={() => handleOpenExerciseDetail(exercise.exerciseId)}
             onPressRestTimer={() => setRestSheetFor(exercise.workoutExerciseId)}
+            onClearRestTimer={() => handleChangeRestTimer(exercise.workoutExerciseId, null)}
+            onToggleTimerMode={() => handleToggleTimerMode(exercise.workoutExerciseId)}
           />
         ))}
 
@@ -454,16 +529,6 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
         />
 
         <View style={styles.footerActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Settings"
-            onPress={() => Alert.alert('Workout settings', 'Workout settings are coming soon.')}
-            style={({ pressed }) => [styles.footerButton, pressed && styles.footerButtonPressed]}
-          >
-            <Text variant="button" color="textPrimary">
-              Settings
-            </Text>
-          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Discard Workout"
@@ -485,6 +550,27 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
           onSkip={rest.skip}
         />
       ) : null}
+
+      <ExerciseMenuSheet
+        visible={menuExercise != null}
+        exerciseName={menuExercise?.exerciseName}
+        // Reorder opens another modal; wait for this sheet to finish
+        // dismissing first so iOS doesn't drop the second presentation.
+        onReorder={() => setTimeout(() => setReorderVisible(true), MENU_DISMISS_MS)}
+        onRemove={() => {
+          if (menuExercise) {
+            handleRemoveExercise(menuExercise.workoutExerciseId);
+          }
+        }}
+        onClose={() => setMenuFor(null)}
+      />
+
+      <ReorderExercisesModal
+        visible={reorderVisible}
+        items={reorderItems}
+        onDone={applyReorder}
+        onClose={() => setReorderVisible(false)}
+      />
 
       <RestTimerSheet
         visible={restSheetExercise != null}

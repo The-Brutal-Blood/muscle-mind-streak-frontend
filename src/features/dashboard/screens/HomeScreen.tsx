@@ -300,7 +300,7 @@ export const HomeScreen = React.memo(function HomeScreenBase() {
         {data.latestPersonalRecord ? (
           <View style={styles.section}>
             <Text variant="label" color="textSecondary" style={styles.sectionLabel}>
-              Latest Personal Record
+              Heaviest of all time
             </Text>
             <PersonalRecordCard record={data.latestPersonalRecord} />
           </View>

@@ -162,6 +162,7 @@ function CreateRoutineRoute({ navigation, route }: CreateRoutineRouteProps) {
       replacement={route.params?.replacement}
       onAddExercise={() => navigation.navigate('AddExercise')}
       onReplaceExercise={targetId => navigation.navigate('AddExercise', { replaceTargetId: targetId })}
+      onOpenExerciseDetail={exerciseId => navigation.navigate('ExerciseDetail', { exerciseId })}
       onCancel={() => navigation.goBack()}
       onSaved={() => navigation.goBack()}
     />
@@ -225,6 +226,7 @@ function WorkoutSessionRoute({ navigation, route }: WorkoutSessionRouteProps) {
         navigation.popToTop();
       }}
       onAddExercise={() => navigation.navigate('AddExercise', { returnTo: 'WorkoutSession' })}
+      onOpenExerciseDetail={exerciseId => navigation.navigate('ExerciseDetail', { exerciseId })}
     />
   );
 }

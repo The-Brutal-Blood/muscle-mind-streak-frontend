@@ -1,3 +1,5 @@
+import { durationToSeconds, secondsToDuration } from '@/utils/duration';
+
 import type {
   FinishWorkoutRequest,
   WorkoutSession,
@@ -46,18 +48,23 @@ export function toSessionState(session: WorkoutSession): WorkoutSessionState {
         exerciseId: exercise.exerciseId,
         exerciseName: exercise.exerciseName,
         imageUrl: exercise.imageUrl,
+        trackingType: exercise.trackingType ?? 'WEIGHT_REPS',
         restTimerSeconds: exercise.restTimerSeconds,
         notes: exercise.notes ?? '',
         previousSets: exercise.previousSets ?? [],
-        sets: (exercise.sets ?? []).map(set => ({
-          workoutSetId: set.workoutSetId,
-          setNumber: set.setNumber,
-          targetWeight: set.targetWeight,
-          targetReps: set.targetReps,
-          weight: numberToField(set.actualWeight ?? set.targetWeight),
-          reps: numberToField(set.actualReps ?? set.targetReps),
-          completed: set.completed,
-        })),
+        sets: (exercise.sets ?? []).map(set => {
+          const durationSeconds = set.duration ?? set.targetDuration;
+          return {
+            workoutSetId: set.workoutSetId,
+            setNumber: set.setNumber,
+            targetWeight: set.targetWeight,
+            targetReps: set.targetReps,
+            weight: numberToField(set.actualWeight ?? set.targetWeight),
+            reps: numberToField(set.actualReps ?? set.targetReps),
+            duration: durationSeconds != null ? secondsToDuration(durationSeconds) : '',
+            completed: set.completed,
+          };
+        }),
       })),
   };
 }
@@ -75,11 +82,16 @@ export function createEmptySet(workoutSetId: string, setNumber: number): Workout
   };
 }
 
-/** True when at least one set has both weight and reps filled in. */
+/**
+ * True when at least one set has a loggable value: reps for WEIGHT_REPS
+ * tracking (weight is optional), a non-zero duration for TIME tracking.
+ */
 export function hasAnySetValues(state: WorkoutSessionState): boolean {
   return state.exercises.some(exercise =>
-    exercise.sets.some(
-      set => parseNumericField(set.weight) != null && parseNumericField(set.reps) != null,
+    exercise.sets.some(set =>
+      exercise.trackingType === 'TIME'
+        ? (durationToSeconds(set.duration ?? '') ?? 0) > 0
+        : parseNumericField(set.reps) != null,
     ),
   );
 }
@@ -118,17 +130,25 @@ export function buildFinishPayload(
     completedSets: countCompletedSets(state),
     exercises: state.exercises.map(exercise => {
       const workoutExerciseId = toServerId(exercise.workoutExerciseId, LOCAL_EXERCISE_ID_PREFIX);
+      const isTime = exercise.trackingType === 'TIME';
       return {
         workoutExerciseId,
         // Added mid-session (no server id yet): identify it by the library
-        // exercise id so the backend can create the WorkoutExercise on finish.
-        // Exercises the session already owns are matched by workoutExerciseId.
-        ...(workoutExerciseId === null ? { exerciseId: exercise.exerciseId } : {}),
+        // exercise id (plus how it's tracked) so the backend can create the
+        // WorkoutExercise on finish. Exercises the session already owns are
+        // matched by workoutExerciseId.
+        ...(workoutExerciseId === null
+          ? {
+              exerciseId: exercise.exerciseId,
+              trackingType: exercise.trackingType ?? 'WEIGHT_REPS',
+            }
+          : {}),
         notes: exercise.notes,
         sets: exercise.sets.map(set => ({
           workoutSetId: toServerId(set.workoutSetId, LOCAL_SET_ID_PREFIX),
-          actualWeight: parseNumericField(set.weight),
-          actualReps: parseNumericField(set.reps),
+          actualWeight: isTime ? null : parseNumericField(set.weight),
+          actualReps: isTime ? null : parseNumericField(set.reps),
+          duration: isTime ? durationToSeconds(set.duration ?? '') : null,
           completed: set.completed,
         })),
       };

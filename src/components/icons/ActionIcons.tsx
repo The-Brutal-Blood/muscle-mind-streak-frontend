@@ -319,6 +319,22 @@ export const PencilIcon = React.memo(function PencilIconBase({ color, size = 20 
   );
 });
 
+export const NoteIcon = React.memo(function NoteIconBase({ color, size = 20 }: ActionIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M14 2.5H7A1.5 1.5 0 0 0 5.5 4v16A1.5 1.5 0 0 0 7 21.5h10a1.5 1.5 0 0 0 1.5-1.5V7L14 2.5Z"
+        stroke={color}
+        strokeWidth={STROKE_WIDTH}
+        strokeLinejoin="round"
+      />
+      <Path d="M14 2.5V7h4.5" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" />
+      <Path d="M9 12.5h6" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+      <Path d="M9 16.5h6" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" />
+    </Svg>
+  );
+});
+
 export const MinusIcon = React.memo(function MinusIconBase({ color, size = 20 }: ActionIconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
