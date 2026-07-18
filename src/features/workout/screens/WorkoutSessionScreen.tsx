@@ -28,6 +28,7 @@ import {
   computeVolume,
   countCompletedSets,
   createEmptySet,
+  hasAnySetValues,
   LOCAL_EXERCISE_ID_PREFIX,
   LOCAL_SET_ID_PREFIX,
 } from '../utils/workoutSession';
@@ -297,6 +298,10 @@ export const WorkoutSessionScreen = React.memo(function WorkoutSessionScreenBase
   const submitFinish = useCallback(() => {
     const current = stateRef.current;
     if (!current || finishMutation.isPending) {
+      return;
+    }
+    if (!hasAnySetValues(current)) {
+      Alert.alert('Cannot Finish Workout', 'Your workout has no set values.');
       return;
     }
     const durationSeconds = Math.max(

@@ -75,6 +75,15 @@ export function createEmptySet(workoutSetId: string, setNumber: number): Workout
   };
 }
 
+/** True when at least one set has both weight and reps filled in. */
+export function hasAnySetValues(state: WorkoutSessionState): boolean {
+  return state.exercises.some(exercise =>
+    exercise.sets.some(
+      set => parseNumericField(set.weight) != null && parseNumericField(set.reps) != null,
+    ),
+  );
+}
+
 /** Total completed sets across the session. */
 export function countCompletedSets(state: WorkoutSessionState): number {
   return state.exercises.reduce(
