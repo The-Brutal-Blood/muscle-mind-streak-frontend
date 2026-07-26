@@ -23,7 +23,7 @@ export const GreetingHeader = React.memo(function GreetingHeaderBase({
   return (
     <View accessible accessibilityRole="header">
       <Text variant="displayL">{title}</Text>
-      <Text variant="bodyLarge" color="textSecondary" style={styles.message}>
+      <Text variant="title" color="primary" style={styles.message}>
         {greeting.message}
       </Text>
     </View>
