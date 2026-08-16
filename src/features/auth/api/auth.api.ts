@@ -2,10 +2,14 @@ import { apiClient } from '@/api/client';
 
 import type {
   AuthSessionResponse,
+  ForgotPasswordPayload,
+  ForgotPasswordResponse,
   LoginPayload,
   LogoutPayload,
   RegisterEmailPayload,
   RegisterEmailResponse,
+  ResetPasswordPayload,
+  ResetPasswordResponse,
   VerifyEmailOtpPayload,
   VerifyEmailOtpResponse,
 } from '../types/auth.types';
@@ -20,6 +24,8 @@ export const authEndpoints = {
   login: '/auth/login',
   logout: '/auth/logout',
   refresh: '/auth/refresh',
+  forgotPassword: '/auth/forgot-password',
+  resetPassword: '/auth/reset-password',
   // Future: resend OTP endpoint plugs in here and gets a matching
   // postResendEmailOtp() + service function + useResendOtp() hook.
   // resendEmailOtp: '/auth/register/email/resend',
@@ -52,4 +58,24 @@ export async function postLogin(payload: LoginPayload): Promise<AuthSessionRespo
 
 export async function postLogout(payload: LogoutPayload): Promise<void> {
   await apiClient.post(authEndpoints.logout, payload);
+}
+
+export async function postForgotPassword(
+  payload: ForgotPasswordPayload,
+): Promise<ForgotPasswordResponse> {
+  const { data } = await apiClient.post<ForgotPasswordResponse>(
+    authEndpoints.forgotPassword,
+    payload,
+  );
+  return data;
+}
+
+export async function postResetPassword(
+  payload: ResetPasswordPayload,
+): Promise<ResetPasswordResponse> {
+  const { data } = await apiClient.post<ResetPasswordResponse>(
+    authEndpoints.resetPassword,
+    payload,
+  );
+  return data;
 }

@@ -16,6 +16,8 @@ import { DumbbellIcon, HistoryIcon, HomeIcon, type TabIconProps } from '@/compon
 import { AddExerciseScreen } from '@/features/exercises/screens/AddExerciseScreen';
 import { ExerciseDetailScreen } from '@/features/exercises/screens/ExerciseDetailScreen';
 import type { Exercise } from '@/features/exercises/types/exercise.types';
+import { AboutScreen } from '@/features/help/screens/AboutScreen';
+import { HelpRequestScreen } from '@/features/help/screens/HelpRequestScreen';
 import { HistoryScreen } from '@/features/history/screens/HistoryScreen';
 import { HomeWithDrawer } from '@/features/menu/screens/HomeWithDrawer';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
@@ -68,6 +70,12 @@ export type AppStackParamList = {
   WeightTracker: undefined;
   /** User profile, opened from the Home drawer (moved off the bottom tabs). */
   Profile: undefined;
+  /** App info (GET /help/about), opened from the Home drawer. */
+  About: undefined;
+  /** Bug report form, opened from the drawer's Help sheet. */
+  ReportBug: undefined;
+  /** Feature suggestion form, opened from the drawer's Help sheet. */
+  SuggestFeature: undefined;
 };
 
 const Tabs = createBottomTabNavigator<AppTabsParamList>();
@@ -152,6 +160,9 @@ type ExerciseDetailRouteProps = NativeStackScreenProps<AppStackParamList, 'Exerc
 type WorkoutSessionRouteProps = NativeStackScreenProps<AppStackParamList, 'WorkoutSession'>;
 type WeightTrackerRouteProps = NativeStackScreenProps<AppStackParamList, 'WeightTracker'>;
 type ProfileRouteProps = NativeStackScreenProps<AppStackParamList, 'Profile'>;
+type AboutRouteProps = NativeStackScreenProps<AppStackParamList, 'About'>;
+type ReportBugRouteProps = NativeStackScreenProps<AppStackParamList, 'ReportBug'>;
+type SuggestFeatureRouteProps = NativeStackScreenProps<AppStackParamList, 'SuggestFeature'>;
 
 /** Save currently just dismisses; the create-routine mutation lands here. */
 function CreateRoutineRoute({ navigation, route }: CreateRoutineRouteProps) {
@@ -242,6 +253,21 @@ function ProfileRoute({ navigation }: ProfileRouteProps) {
   return <ProfileScreen onBack={() => navigation.goBack()} />;
 }
 
+/** App info opened from the Home drawer. */
+function AboutRoute({ navigation }: AboutRouteProps) {
+  return <AboutScreen onBack={() => navigation.goBack()} />;
+}
+
+/** Bug report form opened from the drawer's Help sheet. */
+function ReportBugRoute({ navigation }: ReportBugRouteProps) {
+  return <HelpRequestScreen kind="REPORT_BUG" onBack={() => navigation.goBack()} />;
+}
+
+/** Feature suggestion form opened from the drawer's Help sheet. */
+function SuggestFeatureRoute({ navigation }: SuggestFeatureRouteProps) {
+  return <HelpRequestScreen kind="SUGGEST_FEATURE" onBack={() => navigation.goBack()} />;
+}
+
 export function AppNavigator() {
   return (
     <WorkoutSessionProvider>
@@ -293,6 +319,21 @@ export function AppNavigator() {
       <Stack.Screen
         name="Profile"
         component={ProfileRoute}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="About"
+        component={AboutRoute}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="ReportBug"
+        component={ReportBugRoute}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="SuggestFeature"
+        component={SuggestFeatureRoute}
         options={{ animation: 'slide_from_right' }}
       />
       </Stack.Navigator>

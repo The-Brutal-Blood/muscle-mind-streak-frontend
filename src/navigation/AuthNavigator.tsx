@@ -4,7 +4,9 @@ import {
   type NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 
+import { ForgotPasswordScreen } from '@/features/auth/screens/ForgotPasswordScreen';
 import { LoginScreen } from '@/features/auth/screens/LoginScreen';
+import { ResetPasswordScreen } from '@/features/auth/screens/ResetPasswordScreen';
 import { SignUpScreen } from '@/features/auth/screens/SignUpScreen';
 import { VerifyOtpScreen } from '@/features/auth/screens/VerifyOtpScreen';
 import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen';
@@ -23,6 +25,10 @@ export type AuthStackParamList = {
   Login: undefined;
   Signup: undefined;
   VerifyOtp: { email: string };
+  /** `email` prefills the field with whatever was typed on Login. */
+  ForgotPassword: { email?: string } | undefined;
+  /** Email the reset code was sent to; never re-entered on that screen. */
+  ResetPassword: { email: string };
   CompleteProfile: undefined;
 };
 
@@ -32,6 +38,8 @@ type WelcomeRouteProps = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 type LoginRouteProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 type SignupRouteProps = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 type VerifyOtpRouteProps = NativeStackScreenProps<AuthStackParamList, 'VerifyOtp'>;
+type ForgotPasswordRouteProps = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
+type ResetPasswordRouteProps = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
 function WelcomeRoute({ navigation }: WelcomeRouteProps) {
   return (
@@ -51,6 +59,35 @@ function LoginRoute({ navigation }: LoginRouteProps) {
   return (
     <LoginScreen
       onNeedsProfileSetup={() => navigation.replace('CompleteProfile')}
+      onForgotPassword={email => navigation.navigate('ForgotPassword', { email })}
+      onBack={() => navigation.goBack()}
+    />
+  );
+}
+
+/**
+ * `navigate` (not `replace`) keeps this screen on the stack, so backing out of
+ * the reset step returns here with the entered email still in place.
+ */
+function ForgotPasswordRoute({ navigation, route }: ForgotPasswordRouteProps) {
+  return (
+    <ForgotPasswordScreen
+      initialEmail={route.params?.email}
+      onCodeSent={email => navigation.navigate('ResetPassword', { email })}
+      onBack={() => navigation.goBack()}
+    />
+  );
+}
+
+/**
+ * A reset issues no session on purpose — the user signs in again. `popTo`
+ * unwinds the whole reset flow back to Login rather than stacking another copy.
+ */
+function ResetPasswordRoute({ navigation, route }: ResetPasswordRouteProps) {
+  return (
+    <ResetPasswordScreen
+      email={route.params.email}
+      onDone={() => navigation.popTo('Login')}
       onBack={() => navigation.goBack()}
     />
   );
@@ -102,6 +139,8 @@ export function AuthNavigator() {
       <Stack.Screen name="Login" component={LoginRoute} />
       <Stack.Screen name="Signup" component={SignupRoute} />
       <Stack.Screen name="VerifyOtp" component={VerifyOtpRoute} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordRoute} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordRoute} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfileRoute} />
     </Stack.Navigator>
   );

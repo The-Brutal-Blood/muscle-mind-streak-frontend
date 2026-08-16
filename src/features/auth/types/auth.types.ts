@@ -24,6 +24,26 @@ export interface LogoutPayload {
   refreshToken: string;
 }
 
+/** Starts a password reset; the backend emails a reset code. */
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message?: string;
+}
+
+/** Completes a password reset. No session is issued — the user signs in again. */
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  message?: string;
+}
+
 /** Issued session — returned by both login and OTP verification. */
 export interface AuthSessionResponse {
   accessToken: string;

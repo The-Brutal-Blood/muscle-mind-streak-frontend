@@ -26,6 +26,11 @@ export interface LoginScreenProps {
    * the navigator switches to the app tabs on its own.)
    */
   onNeedsProfileSetup?: (user: UserProfile) => void;
+  /**
+   * Opens the password reset flow. Receives whatever is currently typed in the
+   * email field so the reset screen can prefill it (empty string if untouched).
+   */
+  onForgotPassword?: (email: string) => void;
   /** Returns to the previous screen. Rendered as a back button when provided. */
   onBack?: () => void;
 }
@@ -58,6 +63,7 @@ const VisibilityToggle = React.memo(function VisibilityToggleBase({
 
 export const LoginScreen = React.memo(function LoginScreenBase({
   onNeedsProfileSetup,
+  onForgotPassword,
   onBack,
 }: LoginScreenProps) {
   const { login } = useAuth();
@@ -69,6 +75,7 @@ export const LoginScreen = React.memo(function LoginScreenBase({
 
   const {
     control,
+    getValues,
     handleSubmit,
     formState: { isValid },
   } = useForm<LoginFormValues>({
@@ -97,9 +104,9 @@ export const LoginScreen = React.memo(function LoginScreenBase({
     }
   });
 
-  // Forgot Password is UI-only for now; the reset flow ships with its own
-  // backend endpoint later.
-  const handleForgotPassword = () => {};
+  // Carry whatever has been typed into the reset flow so the user does not
+  // retype it. Validation happens there, so an empty/partial value is fine.
+  const handleForgotPassword = () => onForgotPassword?.(getValues('email'));
 
   // Entrance: screen fades in while the form slides up.
   const reduceMotion = useReducedMotion();
@@ -217,8 +224,9 @@ export const LoginScreen = React.memo(function LoginScreenBase({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Forgot Password"
-            accessibilityHint="Password reset is coming soon"
+            accessibilityHint="Emails you a code to reset your password"
             onPress={handleForgotPassword}
+            disabled={pending}
             hitSlop={spacing.sm}
             style={styles.forgotRow}
           >

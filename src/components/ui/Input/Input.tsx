@@ -5,6 +5,7 @@ import {
   View,
   type StyleProp,
   type TextInputProps,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
@@ -20,6 +21,8 @@ export interface InputProps extends TextInputProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
+  /** Extra styles for the inner TextInput, e.g. a min height for multiline. */
+  inputStyle?: StyleProp<TextStyle>;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function InputBase(
@@ -31,6 +34,8 @@ export const Input = forwardRef<TextInput, InputProps>(function InputBase(
     leftIcon,
     rightIcon,
     containerStyle,
+    inputStyle,
+    multiline,
     onFocus,
     onBlur,
     ...rest
@@ -64,11 +69,19 @@ export const Input = forwardRef<TextInput, InputProps>(function InputBase(
           {label}
         </Text>
       ) : null}
-      <View style={[styles.field, { borderColor }, disabled && styles.disabled]}>
+      <View
+        style={[
+          styles.field,
+          { borderColor },
+          multiline && styles.fieldMultiline,
+          disabled && styles.disabled,
+        ]}
+      >
         {leftIcon ? <View>{leftIcon}</View> : null}
         <TextInput
           ref={ref}
-          style={styles.input}
+          multiline={multiline}
+          style={[styles.input, inputStyle]}
           placeholderTextColor={colors.placeholder}
           selectionColor={colors.primary}
           editable={!disabled}
@@ -102,6 +115,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     minHeight: 48,
     gap: spacing.sm,
+  },
+  // Multiline fields grow downwards; icons must stay pinned to the first line.
+  fieldMultiline: {
+    alignItems: 'flex-start',
   },
   input: {
     ...typography.body,

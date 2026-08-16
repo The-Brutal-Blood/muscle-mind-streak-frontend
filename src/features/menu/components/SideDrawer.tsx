@@ -26,14 +26,23 @@ export interface SideDrawerProps {
   onClose: () => void;
   /** Called for not-yet-built items; the host surfaces a "Coming soon" toast. */
   onComingSoon: (label: string) => void;
+  /** Called after the drawer closes; the host opens the Help action sheet. */
+  onOpenHelp: () => void;
 }
 
 /** Width fraction of the screen the drawer occupies (~80%). */
 const PANEL_FRACTION = 0.8;
 const OPEN_MS = 260;
 const CLOSE_MS = 220;
+/**
+ * Handoff delay for actions that open another Modal (the Help sheet). At
+ * exactly CLOSE_MS the drawer's own Modal is still tearing down, and iOS
+ * silently drops a modal presented while another is on screen — so the sheet
+ * would never appear. Navigation and Alert handoffs are unaffected.
+ */
+const SHEET_HANDOFF_MS = CLOSE_MS + 150;
 
-type DrawerAction = 'weight' | 'profile' | 'logout' | 'comingSoon';
+type DrawerAction = 'weight' | 'profile' | 'help' | 'about' | 'logout' | 'comingSoon';
 
 interface DrawerMenuItem {
   key: string;
@@ -67,6 +76,14 @@ const SECTIONS: DrawerSection[] = [
       { key: 'calorie', emoji: '🔥', label: 'Calorie Counter', badge: 'Coming Soon', action: 'comingSoon' },
       { key: 'water', emoji: '💧', label: 'Water Tracker', badge: 'Coming Soon', action: 'comingSoon' },
       { key: 'nutrition', emoji: '🥗', label: 'Nutrition', badge: 'Coming Soon', action: 'comingSoon' },
+    ],
+  },
+  {
+    id: 'support',
+    title: 'Support',
+    items: [
+      { key: 'help', emoji: '❓', label: 'Help', action: 'help' },
+      { key: 'about', emoji: 'ℹ️', label: 'About', action: 'about' },
     ],
   },
 ];
@@ -135,6 +152,7 @@ export const SideDrawer = React.memo(function SideDrawerBase({
   visible,
   onClose,
   onComingSoon,
+  onOpenHelp,
 }: SideDrawerProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -214,6 +232,14 @@ export const SideDrawer = React.memo(function SideDrawerBase({
         break;
       case 'profile':
         setTimeout(() => navigation.navigate('Profile'), CLOSE_MS);
+        break;
+      case 'about':
+        setTimeout(() => navigation.navigate('About'), CLOSE_MS);
+        break;
+      case 'help':
+        // The sheet lives on the host so it survives this drawer unmounting,
+        // and waits out this Modal's dismissal before presenting its own.
+        setTimeout(onOpenHelp, SHEET_HANDOFF_MS);
         break;
       case 'logout':
         setTimeout(confirmLogout, CLOSE_MS);

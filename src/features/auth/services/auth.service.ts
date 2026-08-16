@@ -2,12 +2,23 @@ import { toApiError } from '@/api/client';
 import { getCurrentUser } from '@/services/user.service';
 import { clearTokens, getRefreshToken, saveTokens } from '@/storage/token.service';
 
-import { postLogin, postLogout, postRegisterEmail, postVerifyEmailOtp } from '../api/auth.api';
+import {
+  postForgotPassword,
+  postLogin,
+  postLogout,
+  postRegisterEmail,
+  postResetPassword,
+  postVerifyEmailOtp,
+} from '../api/auth.api';
 import type {
   AuthSessionResponse,
+  ForgotPasswordPayload,
+  ForgotPasswordResponse,
   LoginPayload,
   RegisterEmailPayload,
   RegisterEmailResponse,
+  ResetPasswordPayload,
+  ResetPasswordResponse,
   VerifyEmailOtpPayload,
   VerifyEmailOtpResponse,
 } from '../types/auth.types';
@@ -67,6 +78,38 @@ export async function login(payload: LoginPayload): Promise<AuthSessionResponse>
       refreshToken: response.refreshToken,
     });
     return response;
+  } catch (error) {
+    throw toApiError(error);
+  }
+}
+
+/**
+ * Starts a password reset. On success the backend has emailed a reset code;
+ * the caller should route to the reset screen carrying the normalized email.
+ */
+export async function forgotPassword(
+  payload: ForgotPasswordPayload,
+): Promise<ForgotPasswordResponse> {
+  try {
+    return await postForgotPassword({ email: normalizeEmail(payload.email) });
+  } catch (error) {
+    throw toApiError(error);
+  }
+}
+
+/**
+ * Completes a password reset. Deliberately issues no session and persists no
+ * tokens — the user signs in again with the new password.
+ */
+export async function resetPassword(
+  payload: ResetPasswordPayload,
+): Promise<ResetPasswordResponse> {
+  try {
+    return await postResetPassword({
+      email: normalizeEmail(payload.email),
+      otp: payload.otp,
+      newPassword: payload.newPassword,
+    });
   } catch (error) {
     throw toApiError(error);
   }
