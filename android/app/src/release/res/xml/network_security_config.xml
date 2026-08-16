@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release builds get usesCleartextTraffic="false" from the React Native Gradle
+  Plugin, which blocks the plain-HTTP dev API. Permit cleartext for that one
+  host only; everything else stays HTTPS-only.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">3.110.35.37</domain>
+    </domain-config>
+</network-security-config>

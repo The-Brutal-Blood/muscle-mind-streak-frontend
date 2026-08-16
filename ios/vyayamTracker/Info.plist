@@ -33,6 +33,16 @@
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
+		<!-- The dev API is served over plain HTTP on a public IP, which ATS
+		     blocks by default. Scoped exception for that one host only. -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>3.110.35.37</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
