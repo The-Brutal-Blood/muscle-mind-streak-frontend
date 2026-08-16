@@ -1,4 +1,0 @@
-/Users/hemantkashyap/personal project/muscle-mind-tracker/muscle-mind-streak-frontend/android/app/.cxx/Debug/l6632z6a/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir
-/Users/hemantkashyap/personal project/muscle-mind-tracker/muscle-mind-streak-frontend/android/app/.cxx/Debug/l6632z6a/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir
-/Users/hemantkashyap/personal project/muscle-mind-tracker/muscle-mind-streak-frontend/android/app/.cxx/Debug/l6632z6a/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/edit_cache.dir
-/Users/hemantkashyap/personal project/muscle-mind-tracker/muscle-mind-streak-frontend/android/app/.cxx/Debug/l6632z6a/arm64-v8a/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/rebuild_cache.dir

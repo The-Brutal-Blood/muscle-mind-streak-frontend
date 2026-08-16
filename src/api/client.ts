@@ -3,15 +3,13 @@ import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from '@/storage/token.service';
 
-/**
- * Local development host. Android emulators reach the host machine through
- * 10.0.2.2; iOS simulators use localhost directly. Swap this for an
- * environment-driven URL once a staging/production backend exists.
- */
-const DEV_HOST = Platform.select({
-  android: 'http://10.0.2.2:8080',
-  default: 'http://localhost:8080',
-});
+
+//use below for the local
+// const DEV_HOST = Platform.select({
+//   android: 'http://10.0.2.2:8080',
+//   default: 'http://localhost:8080',
+// });
+const DEV_HOST = 'http://3.110.35.37:8080';
 
 export const API_BASE_URL = `${DEV_HOST}/api`;
 export const API_TIMEOUT_MS = 15000;
